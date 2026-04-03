@@ -46,7 +46,7 @@
  * will always be undefined.
  */
 import { parse as parseDate } from 'date-fns'
-import { generateExternalId } from '../hash.js'
+import { generateExternalId } from '../hash'
 import type { ParsedTransaction, ParseResult } from '@finance/types'
 
 /**

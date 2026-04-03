@@ -1,72 +1,75 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef } from 'react'
+import Link from 'next/link'
 import { Upload, FileText, CheckCircle, AlertCircle, X } from 'lucide-react'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 
 type AccountType = 'transaction' | 'savings' | 'credit_card' | 'loan'
 
 interface Account {
-  id: string
-  name: string
+  id:          string
+  name:        string
   institution: string
-  type: AccountType
+  type:        AccountType
 }
 
 interface PreviewTransaction {
-  date: string
+  date:        string
   description: string
-  amount: number
-  type: 'credit' | 'debit'
-  balance: number | null
+  amount:      number
+  type:        'credit' | 'debit'
+  balance:     number | null
 }
 
 interface PreviewResult {
-  format: string
-  totalCount: number
+  format:       string
+  totalCount:   number
   accountName?: string
-  currency: string
-  parseErrors: string[]
-  preview: PreviewTransaction[]
+  currency:     string
+  parseErrors:  string[]
+  preview:      PreviewTransaction[]
 }
 
 interface ImportResult {
   imported: number
-  skipped: number
-  errors: string[]
+  skipped:  number
+  errors:   string[]
 }
 
 type Step = 'upload' | 'configure' | 'preview' | 'done'
 
 const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
-  transaction: 'Transaction / Everyday',
-  savings: 'Savings',
-  credit_card: 'Credit Card',
-  loan: 'Loan',
+  transaction:  'Transaction / Everyday',
+  savings:      'Savings',
+  credit_card:  'Credit Card',
+  loan:         'Loan',
 }
 
 const ACCEPTED_EXTENSIONS = '.csv,.qif,.ofx,.qbo'
 
+const STEPS: { key: Step; label: string }[] = [
+  { key: 'upload',    label: 'Upload'    },
+  { key: 'configure', label: 'Configure' },
+  { key: 'preview',   label: 'Preview'   },
+  { key: 'done',      label: 'Done'      },
+]
+
 export default function ImportPage() {
-  const [step, setStep] = useState<Step>('upload')
-  const [files, setFiles] = useState<File[]>([])
-  const [dragging, setDragging] = useState(false)
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [accountId, setAccountId] = useState<string>('')
-  const [isNew, setIsNew] = useState(false)
-  const [newAccount, setNewAccount] = useState({
-    name: '',
-    institution: '',
-    type: 'transaction' as AccountType,
-  })
-  const [preview, setPreview] = useState<PreviewResult | null>(null)
-  const [importing, setImporting] = useState(false)
-  const [result, setResult] = useState<ImportResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [step,       setStep]       = useState<Step>('upload')
+  const [files,      setFiles]      = useState<File[]>([])
+  const [dragging,   setDragging]   = useState(false)
+  const [accounts,   setAccounts]   = useState<Account[]>([])
+  const [accountId,  setAccountId]  = useState<string>('')
+  const [isNew,      setIsNew]      = useState(false)
+  const [newAccount, setNewAccount] = useState({ name: '', institution: '', type: 'transaction' as AccountType })
+  const [preview,    setPreview]    = useState<PreviewResult | null>(null)
+  const [importing,  setImporting]  = useState(false)
+  const [result,     setResult]     = useState<ImportResult | null>(null)
+  const [error,      setError]      = useState<string | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Load accounts when the user proceeds to configure
   async function loadAccounts() {
     const res = await fetch('/api/accounts')
     if (res.ok) {
@@ -120,25 +123,29 @@ export default function ImportPage() {
     for (const file of files) form.append('files', file)
 
     if (isNew) {
-      form.append('accountName', newAccount.name)
-      form.append('institution', newAccount.institution)
-      form.append('accountType', newAccount.type)
+      form.append('accountName',  newAccount.name)
+      form.append('institution',  newAccount.institution)
+      form.append('accountType',  newAccount.type)
     } else {
       form.append('accountId', accountId)
     }
 
-    const res = await fetch('/api/import', { method: 'POST', body: form })
-    const data = (await res.json()) as ImportResult | { error: string }
+    try {
+      const res  = await fetch('/api/import', { method: 'POST', body: form })
+      const data = (await res.json()) as ImportResult | { error: string }
 
-    if (!res.ok) {
-      setError('error' in data ? data.error : 'Import failed')
+      if (!res.ok) {
+        setError('error' in data ? data.error : 'Import failed')
+        return
+      }
+
+      setResult(data as ImportResult)
+      setStep('done')
+    } catch {
+      setError('Request failed. Check your connection and try again.')
+    } finally {
       setImporting(false)
-      return
     }
-
-    setResult(data as ImportResult)
-    setImporting(false)
-    setStep('done')
   }
 
   function reset() {
@@ -156,39 +163,79 @@ export default function ImportPage() {
     ? newAccount.name.trim() && newAccount.institution.trim()
     : !!accountId
 
-  return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-semibold text-gray-900 mb-8">Import transactions</h1>
+  const stepIndex = STEPS.findIndex((s) => s.key === step)
 
+  return (
+    <div className="px-10 py-8 max-w-2xl">
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-xl font-medium text-[#37352F] text-balance">Import transactions</h1>
+        <Link
+          href="/import/history"
+          className="text-xs text-[#787774] hover:text-[#37352F] transition-colors"
+        >
+          View history →
+        </Link>
+      </div>
+
+      {/* Step indicator */}
+      <div className="flex items-center gap-0 mb-8">
+        {STEPS.map((s, i) => (
+          <div key={s.key} className="flex items-center">
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  'text-xs font-medium transition-colors',
+                  i < stepIndex  ? 'text-[#4CAF7D]'  :
+                  i === stepIndex ? 'text-[#37352F]'  :
+                                   'text-[#ACABA8]',
+                )}
+              >
+                {i < stepIndex ? '✓' : String(i + 1)}
+              </span>
+              <span
+                className={cn(
+                  'text-xs transition-colors',
+                  i === stepIndex ? 'text-[#37352F] font-medium' : 'text-[#ACABA8]',
+                )}
+              >
+                {s.label}
+              </span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <span className="mx-3 text-[#E9E7E2] text-xs">—</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Error */}
       {error && (
-        <div className="mb-6 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+        <div className="mb-6 flex items-start gap-2 border border-[#E5534B] bg-[#FFF5F5] px-4 py-3 text-sm text-[#E5534B]">
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
           {error}
         </div>
       )}
 
-      {/* ── Step 1: Upload ─────────────────────────────────────────────── */}
+      {/* ── Step 1: Upload ── */}
       {step === 'upload' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div
             onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
             onClick={() => inputRef.current?.click()}
             className={cn(
-              'border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors',
+              'border-2 border-dashed p-12 text-center cursor-pointer transition-colors',
               dragging
-                ? 'border-gray-400 bg-gray-50'
-                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50',
+                ? 'border-[#37352F] bg-[#F7F6F3]'
+                : 'border-[#E9E7E2] hover:border-[#ACABA8] hover:bg-[#F7F6F3]',
             )}
           >
-            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-            <p className="text-sm font-medium text-gray-700">
-              Drop files here or click to browse
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              Supports .csv, .qif, .ofx, .qbo
-            </p>
+            <Upload className="w-6 h-6 text-[#ACABA8] mx-auto mb-3" strokeWidth={1.5} />
+            <p className="text-sm text-[#37352F]">Drop files here or click to browse</p>
+            <p className="text-xs text-[#ACABA8] mt-1">CSV · QIF · OFX · QBO</p>
             <input
               ref={inputRef}
               type="file"
@@ -204,28 +251,23 @@ export default function ImportPage() {
               {files.map((f, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg px-4 py-3"
+                  className="flex items-center gap-3 bg-white border border-[#E9E7E2] px-4 py-2.5"
                 >
-                  <FileText className="w-4 h-4 text-gray-400 shrink-0" />
-                  <span className="text-sm text-gray-700 flex-1 truncate">{f.name}</span>
-                  <span className="text-xs text-gray-400">
-                    {(f.size / 1024).toFixed(0)} KB
-                  </span>
+                  <FileText className="w-4 h-4 text-[#ACABA8] shrink-0" strokeWidth={1.5} />
+                  <span className="text-sm text-[#37352F] flex-1 truncate">{f.name}</span>
+                  <span className="text-xs text-[#ACABA8]">{(f.size / 1024).toFixed(0)} KB</span>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setFiles(files.filter((_, j) => j !== i))
-                    }}
-                    className="text-gray-400 hover:text-gray-600"
+                    onClick={(e) => { e.stopPropagation(); setFiles(files.filter((_, j) => j !== i)) }}
+                    aria-label={`Remove ${f.name}`}
+                    className="text-[#ACABA8] hover:text-[#37352F] transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
               ))}
-
               <button
                 onClick={handleContinueToConfig}
-                className="w-full bg-gray-900 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-gray-700 transition-colors mt-2"
+                className="w-full bg-[#37352F] text-white py-2.5 text-sm font-medium hover:bg-[#4A4643] transition-colors rounded-md mt-2"
               >
                 Continue
               </button>
@@ -234,24 +276,22 @@ export default function ImportPage() {
         </div>
       )}
 
-      {/* ── Step 2: Configure account ──────────────────────────────────── */}
+      {/* ── Step 2: Configure ── */}
       {step === 'configure' && (
         <div className="space-y-6">
           <div>
-            <h2 className="text-sm font-medium text-gray-700 mb-3">
-              Which account do these transactions belong to?
-            </h2>
+            <p className="section-label mb-3">Which account do these transactions belong to?</p>
 
             {accounts.length > 0 && (
-              <div className="space-y-2 mb-4">
+              <div className="space-y-1 mb-3">
                 {accounts.map((acc) => (
                   <label
                     key={acc.id}
                     className={cn(
-                      'flex items-center gap-3 border rounded-lg px-4 py-3 cursor-pointer transition-colors',
+                      'flex items-center gap-3 border px-4 py-3 cursor-pointer transition-colors',
                       accountId === acc.id && !isNew
-                        ? 'border-gray-900 bg-gray-50'
-                        : 'border-gray-200 hover:border-gray-300',
+                        ? 'border-[#37352F] bg-white'
+                        : 'border-[#E9E7E2] bg-white hover:border-[#ACABA8]',
                     )}
                   >
                     <input
@@ -260,21 +300,20 @@ export default function ImportPage() {
                       value={acc.id}
                       checked={accountId === acc.id && !isNew}
                       onChange={() => { setAccountId(acc.id); setIsNew(false) }}
-                      className="accent-gray-900"
+                      className="accent-[#37352F]"
                     />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{acc.name}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-sm font-medium text-[#37352F]">{acc.name}</p>
+                      <p className="text-xs text-[#787774]">
                         {acc.institution} · {ACCOUNT_TYPE_LABELS[acc.type]}
                       </p>
                     </div>
                   </label>
                 ))}
-
                 <label
                   className={cn(
-                    'flex items-center gap-3 border rounded-lg px-4 py-3 cursor-pointer transition-colors',
-                    isNew ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:border-gray-300',
+                    'flex items-center gap-3 border px-4 py-3 cursor-pointer transition-colors',
+                    isNew ? 'border-[#37352F] bg-white' : 'border-[#E9E7E2] bg-white hover:border-[#ACABA8]',
                   )}
                 >
                   <input
@@ -282,61 +321,39 @@ export default function ImportPage() {
                     name="account"
                     checked={isNew}
                     onChange={() => { setIsNew(true); setAccountId('') }}
-                    className="accent-gray-900"
+                    className="accent-[#37352F]"
                   />
-                  <span className="text-sm font-medium text-gray-900">New account…</span>
+                  <span className="text-sm font-medium text-[#37352F]">New account…</span>
                 </label>
               </div>
             )}
 
             {isNew && (
-              <div className="border border-gray-200 rounded-lg p-4 space-y-4">
+              <div className="border border-[#E9E7E2] bg-white rounded-lg p-4 space-y-4">
+                {[
+                  { label: 'Account name', key: 'name',        placeholder: 'e.g. Westpac Everyday' },
+                  { label: 'Institution',  key: 'institution', placeholder: 'e.g. Westpac'          },
+                ].map(({ label, key, placeholder }) => (
+                  <div key={key}>
+                    <label className="block section-label mb-1.5">{label}</label>
+                    <input
+                      type="text"
+                      placeholder={placeholder}
+                      value={newAccount[key as 'name' | 'institution']}
+                      onChange={(e) => setNewAccount((p) => ({ ...p, [key]: e.target.value }))}
+                      className="w-full border border-[#E9E7E2] px-3 py-2 text-sm text-[#37352F] placeholder:text-[#ACABA8] focus:outline-none focus:border-[#37352F] transition-colors bg-white"
+                    />
+                  </div>
+                ))}
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Account name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Westpac Everyday"
-                    value={newAccount.name}
-                    onChange={(e) =>
-                      setNewAccount((p) => ({ ...p, name: e.target.value }))
-                    }
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Institution
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Westpac"
-                    value={newAccount.institution}
-                    onChange={(e) =>
-                      setNewAccount((p) => ({ ...p, institution: e.target.value }))
-                    }
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Account type
-                  </label>
+                  <label className="block section-label mb-1.5">Account type</label>
                   <select
                     value={newAccount.type}
-                    onChange={(e) =>
-                      setNewAccount((p) => ({
-                        ...p,
-                        type: e.target.value as AccountType,
-                      }))
-                    }
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+                    onChange={(e) => setNewAccount((p) => ({ ...p, type: e.target.value as AccountType }))}
+                    className="w-full border border-[#E9E7E2] px-3 py-2 text-sm text-[#37352F] focus:outline-none focus:border-[#37352F] transition-colors bg-white"
                   >
                     {Object.entries(ACCOUNT_TYPE_LABELS).map(([v, label]) => (
-                      <option key={v} value={v}>
-                        {label}
-                      </option>
+                      <option key={v} value={v}>{label}</option>
                     ))}
                   </select>
                 </div>
@@ -347,14 +364,14 @@ export default function ImportPage() {
           <div className="flex gap-3">
             <button
               onClick={() => setStep('upload')}
-              className="flex-1 border border-gray-300 rounded-lg py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors"
+              className="flex-1 border border-[#E9E7E2] py-2.5 text-sm text-[#787774] hover:border-[#37352F] hover:text-[#37352F] transition-colors"
             >
               Back
             </button>
             <button
               onClick={handlePreview}
               disabled={!accountValid}
-              className="flex-1 bg-gray-900 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-gray-700 transition-colors disabled:opacity-40"
+              className="flex-1 bg-[#37352F] text-white py-2.5 text-sm font-medium hover:bg-[#4A4643] transition-colors rounded-md disabled:opacity-30"
             >
               Preview
             </button>
@@ -362,22 +379,22 @@ export default function ImportPage() {
         </div>
       )}
 
-      {/* ── Step 3: Preview ────────────────────────────────────────────── */}
+      {/* ── Step 3: Preview ── */}
       {step === 'preview' && preview && (
-        <div className="space-y-6">
-          <div className="flex items-center gap-3 text-sm text-gray-600">
-            <span className="bg-gray-100 px-2.5 py-1 rounded font-mono text-xs uppercase tracking-wide">
+        <div className="space-y-5">
+          <div className="flex items-center gap-3 text-sm text-[#787774]">
+            <span className="bg-[#EDE9E3] px-2 py-0.5 text-xs font-mono uppercase tracking-wider text-[#37352F]">
               {preview.format}
             </span>
-            <span>{preview.totalCount} transactions found</span>
+            <span>{preview.totalCount} transactions</span>
             <span>·</span>
             <span>{preview.currency}</span>
           </div>
 
           {preview.parseErrors.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <p className="text-xs font-medium text-amber-800 mb-1">Parse warnings</p>
-              <ul className="text-xs text-amber-700 space-y-0.5">
+            <div className="border border-[#F0C040] bg-[#FFFDF0] p-3">
+              <p className="text-xs font-medium text-[#7A6000] mb-1">Parse warnings</p>
+              <ul className="text-xs text-[#7A6000] space-y-0.5">
                 {preview.parseErrors.slice(0, 5).map((e, i) => (
                   <li key={i}>{e}</li>
                 ))}
@@ -388,26 +405,26 @@ export default function ImportPage() {
             </div>
           )}
 
-          <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="border border-[#E9E7E2] bg-white rounded-lg">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Date</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Description</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">Amount</th>
+                <tr className="border-b border-[#E9E7E2]">
+                  <th className="px-4 py-2.5 text-left section-label font-medium">Date</th>
+                  <th className="px-4 py-2.5 text-left section-label font-medium">Description</th>
+                  <th className="px-4 py-2.5 text-right section-label font-medium">Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {preview.preview.map((tx, i) => (
-                  <tr key={i} className="border-b border-gray-100 last:border-0">
-                    <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">
+                  <tr key={i} className="border-b border-[#EDE9E3] last:border-0">
+                    <td className="px-4 py-2.5 text-[#787774] whitespace-nowrap text-xs">
                       {formatDate(tx.date)}
                     </td>
-                    <td className="px-4 py-2.5 text-gray-900 truncate max-w-[200px]">
+                    <td className="px-4 py-2.5 text-[#37352F] truncate max-w-[240px]">
                       {tx.description}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums font-medium">
-                      <span className={tx.type === 'credit' ? 'text-green-600' : 'text-gray-900'}>
+                      <span className={tx.type === 'credit' ? 'text-[#4CAF7D]' : 'text-[#37352F]'}>
                         {tx.type === 'credit' ? '+' : ''}
                         {formatCurrency(tx.amount)}
                       </span>
@@ -417,7 +434,7 @@ export default function ImportPage() {
               </tbody>
             </table>
             {preview.totalCount > 5 && (
-              <p className="text-xs text-gray-400 px-4 py-2 border-t border-gray-100">
+              <p className="text-xs text-[#ACABA8] px-4 py-2 border-t border-[#EDE9E3]">
                 Showing 5 of {preview.totalCount} transactions
               </p>
             )}
@@ -426,14 +443,14 @@ export default function ImportPage() {
           <div className="flex gap-3">
             <button
               onClick={() => setStep('configure')}
-              className="flex-1 border border-gray-300 rounded-lg py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors"
+              className="flex-1 border border-[#E9E7E2] py-2.5 text-sm text-[#787774] hover:border-[#37352F] hover:text-[#37352F] transition-colors"
             >
               Back
             </button>
             <button
               onClick={handleImport}
               disabled={importing}
-              className="flex-1 bg-gray-900 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-gray-700 transition-colors disabled:opacity-50"
+              className="flex-1 bg-[#37352F] text-white py-2.5 text-sm font-medium hover:bg-[#4A4643] transition-colors rounded-md disabled:opacity-40"
             >
               {importing ? 'Importing…' : `Import ${preview.totalCount} transactions`}
             </button>
@@ -441,34 +458,30 @@ export default function ImportPage() {
         </div>
       )}
 
-      {/* ── Step 4: Done ───────────────────────────────────────────────── */}
+      {/* ── Step 4: Done ── */}
       {step === 'done' && result && (
-        <div className="space-y-6 text-center">
-          <div className="pt-4">
-            <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-gray-900">Import complete</h2>
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-[#4CAF7D]" strokeWidth={1.5} />
+            <h2 className="text-base font-medium text-[#37352F]">Import complete</h2>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 text-left">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-2xl font-semibold text-green-700">{result.imported}</p>
-              <p className="text-sm text-green-600 mt-0.5">transactions imported</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="border border-[#E9E7E2] bg-white rounded-lg p-5">
+              <p className="text-2xl font-semibold tabular-nums text-[#4CAF7D]">{result.imported}</p>
+              <p className="section-label mt-1">transactions imported</p>
             </div>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <p className="text-2xl font-semibold text-gray-600">{result.skipped}</p>
-              <p className="text-sm text-gray-500 mt-0.5">duplicates skipped</p>
+            <div className="border border-[#E9E7E2] bg-white rounded-lg p-5">
+              <p className="text-2xl font-semibold tabular-nums text-[#ACABA8]">{result.skipped}</p>
+              <p className="section-label mt-1">duplicates skipped</p>
             </div>
           </div>
 
           {result.errors.length > 0 && (
-            <div className="text-left bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <p className="text-xs font-medium text-amber-800 mb-1">
-                {result.errors.length} warnings
-              </p>
-              <ul className="text-xs text-amber-700 space-y-0.5">
-                {result.errors.slice(0, 5).map((e, i) => (
-                  <li key={i}>{e}</li>
-                ))}
+            <div className="border border-[#F0C040] bg-[#FFFDF0] p-3">
+              <p className="text-xs font-medium text-[#7A6000] mb-1">{result.errors.length} warnings</p>
+              <ul className="text-xs text-[#7A6000] space-y-0.5">
+                {result.errors.slice(0, 5).map((e, i) => <li key={i}>{e}</li>)}
               </ul>
             </div>
           )}
@@ -476,13 +489,13 @@ export default function ImportPage() {
           <div className="flex gap-3">
             <button
               onClick={reset}
-              className="flex-1 border border-gray-300 rounded-lg py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors"
+              className="flex-1 border border-[#E9E7E2] py-2.5 text-sm text-[#787774] hover:border-[#37352F] hover:text-[#37352F] transition-colors"
             >
-              Import more files
+              Import more
             </button>
             <a
               href="/transactions"
-              className="flex-1 bg-gray-900 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-gray-700 transition-colors text-center"
+              className="flex-1 bg-[#37352F] text-white py-2.5 text-sm font-medium hover:bg-[#4A4643] transition-colors rounded-md text-center"
             >
               View transactions →
             </a>

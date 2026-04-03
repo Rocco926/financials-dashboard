@@ -13,7 +13,7 @@ async function main() {
   // bcryptjs must be installed in apps/web
   let bcrypt
   try {
-    bcrypt = require('./apps/web/node_modules/bcryptjs')
+    bcrypt = require('../apps/web/node_modules/bcryptjs')
   } catch {
     try {
       bcrypt = require('bcryptjs')

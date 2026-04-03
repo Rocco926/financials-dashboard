@@ -1,97 +1,62 @@
-/**
- * Nav — the left-hand sidebar navigation.
- *
- * WHAT IT RENDERS
- * ────────────────
- * A fixed-width (224px / w-56) sidebar containing:
- *   - App title and subtitle at the top
- *   - Navigation links to the four main pages
- *   - A "Sign out" button at the bottom
- *
- * ACTIVE STATE
- * ─────────────
- * The currently active link is highlighted with a gray background.
- * We use `usePathname()` (Next.js hook) to compare each link's href
- * against the current URL path.
- *
- * SIGN OUT
- * ─────────
- * Calls next-auth/react's `signOut()` with `callbackUrl: '/login'` so
- * the user is redirected to the login page after their session is cleared.
- * This is a client-side call — it POSTs to /api/auth/signout internally.
- *
- * CLIENT COMPONENT
- * ─────────────────
- * Must be 'use client' because it uses:
- *   - usePathname() — reads the current URL client-side
- *   - onClick on the sign-out button — event handler
- *
- * The parent layout (app/layout.tsx) is a Server Component that conditionally
- * renders this Nav only when the user is authenticated. Unauthenticated users
- * (on the /login page) see no sidebar.
- */
 'use client'
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Upload, List, Target, LogOut } from 'lucide-react'
+import { LayoutDashboard, List, Target, Wallet, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { signOut } from 'next-auth/react'
 
-/**
- * The four navigation destinations.
- * - href: the Next.js route path
- * - label: displayed text
- * - icon: Lucide React icon component
- */
 const links = [
   { href: '/',             label: 'Dashboard',    icon: LayoutDashboard },
-  { href: '/import',       label: 'Import',       icon: Upload          },
+  { href: '/holdings',     label: 'Holdings',     icon: Wallet          },
   { href: '/transactions', label: 'Transactions', icon: List            },
   { href: '/budgets',      label: 'Budgets',      icon: Target          },
 ]
 
-/** Renders the left sidebar navigation. No props — reads state from URL and auth. */
 export function Nav() {
   const pathname = usePathname()
 
   return (
-    <nav className="w-56 border-r border-gray-200 bg-white flex flex-col shrink-0">
-      {/* App header */}
-      <div className="p-5 border-b border-gray-200">
-        <h1 className="font-semibold text-base text-gray-900">Finance</h1>
-        <p className="text-xs text-gray-500 mt-0.5">Personal dashboard</p>
+    <nav className="w-[220px] shrink-0 flex flex-col bg-[#FBFAF8] border-r border-[#E9E7E2]">
+      {/* App title */}
+      <div className="px-4 pt-5 pb-3">
+        <p className="text-sm font-semibold text-[#37352F]">Finance</p>
+        <p className="text-[11px] text-[#ACABA8] mt-0.5">Personal dashboard</p>
       </div>
 
-      {/* Navigation links */}
-      <ul className="p-3 flex-1 space-y-0.5">
-        {links.map(({ href, label, icon: Icon }) => (
-          <li key={href}>
-            <Link
-              href={href}
-              className={cn(
-                'flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors',
-                // Active: darker background, full weight text
-                pathname === href
-                  ? 'bg-gray-100 text-gray-900 font-medium'
-                  // Inactive: subtle text, hover effect
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-              )}
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              {label}
-            </Link>
-          </li>
-        ))}
+      {/* Nav links */}
+      <ul className="flex-1 px-2 space-y-px pt-1">
+        {links.map(({ href, label, icon: Icon }) => {
+          const active = pathname === href || (href !== '/' && pathname.startsWith(href))
+          return (
+            <li key={href}>
+              <Link
+                href={href}
+                className={cn(
+                  'flex items-center gap-2 py-1.5 px-2.5 text-sm rounded-md transition-colors',
+                  active
+                    ? 'bg-[#EDEBE7] text-[#37352F] font-medium'
+                    : 'text-[#787774] hover:bg-[#F1EFE9] hover:text-[#37352F]',
+                )}
+              >
+                <Icon
+                  className={cn('size-[15px] shrink-0', active ? 'text-[#37352F]' : 'text-[#ACABA8]')}
+                  strokeWidth={1.5}
+                />
+                {label}
+              </Link>
+            </li>
+          )
+        })}
       </ul>
 
-      {/* Sign out button — pinned to bottom of sidebar */}
-      <div className="p-3 border-t border-gray-200">
+      {/* Sign out */}
+      <div className="px-2 pb-4 pt-2 border-t border-[#E9E7E2]">
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
-          className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 w-full transition-colors"
+          className="flex items-center gap-2 w-full py-1.5 px-2.5 text-sm text-[#ACABA8] hover:bg-[#F1EFE9] hover:text-[#787774] rounded-md transition-colors"
         >
-          <LogOut className="w-4 h-4 shrink-0" />
+          <LogOut className="size-[15px] shrink-0" strokeWidth={1.5} />
           Sign out
         </button>
       </div>

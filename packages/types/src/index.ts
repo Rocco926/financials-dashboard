@@ -123,6 +123,25 @@ export interface ParsedTransaction {
   type: TransactionType
 
   /**
+   * Cleaned merchant name, if the source file provides one.
+   * Currently populated only by the NAB nab2 CSV format, which exports a
+   * "Merchant Name" column with a tidied label (e.g. "Woolworths" instead of
+   * "WOOLWORTHS METRO SYDNEY 036"). When present, the import route uses this
+   * as the initial `merchant` value rather than falling back to `description`.
+   * undefined means the file format doesn't include a merchant column.
+   */
+  merchantName?: string
+
+  /**
+   * Category suggested by the parser from bank-provided metadata.
+   * Currently populated only by NAB nab2 CSV, which includes a "Category"
+   * column (e.g. "Groceries", "Income"). The import route checks this after
+   * the category_rules table and before the static keyword map.
+   * undefined means no bank-provided category was available.
+   */
+  suggestedCategory?: string
+
+  /**
    * The complete original parsed record, preserved as-is for debugging.
    * For CSV: the entire Papa.parse row object (all columns).
    * For QIF: the D/T/P/M fields as strings.

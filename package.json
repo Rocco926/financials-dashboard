@@ -7,9 +7,9 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "db:generate": "turbo run db:generate --filter=db",
-    "db:push": "turbo run db:push --filter=db",
-    "db:seed": "turbo run db:seed --filter=db",
+    "db:generate": "turbo run db:generate --filter=@finance/db",
+    "db:push": "turbo run db:push --filter=@finance/db",
+    "db:seed": "turbo run db:seed --filter=@finance/db",
     "hash-password": "node scripts/hash-password.mjs"
   },
   "devDependencies": {
@@ -19,5 +19,10 @@
   "packageManager": "pnpm@9.0.0",
   "engines": {
     "node": ">=20.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "0.19.12"
+    }
   }
 }

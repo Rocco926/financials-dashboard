@@ -420,3 +420,42 @@ The category name is what the user sees — it's the natural key. Storing the na
 
 **Why are monetary values stored as `numeric(12,2)` instead of float?**
 Floating-point arithmetic is imprecise for money. `0.1 + 0.2 !== 0.3` in IEEE 754. PostgreSQL's `numeric` type stores exact decimal values. Note: Drizzle returns `numeric` columns as strings in JavaScript — always parse with `parseFloat()` before arithmetic.
+
+---
+
+## TODO
+
+### Auto-categorisation: Approach B — Claude API (AI classification)
+
+**Current state (Approach A):** Categorisation at import time uses a 3-step pipeline:
+1. `category_rules` table — user corrections always win (persisted via `PATCH /api/transactions/[id]`)
+2. Bank-provided category — NAB nab2 CSV exports a `Category` column; mapped to our 16 categories
+3. Static keyword map — `apps/web/lib/categorise.ts` contains ~100 patterns for common AU merchants
+
+**What Approach B adds:** After the keyword map, any still-uncategorised transactions would be batched to `claude-haiku-4-5` for AI classification. This handles novel merchants and edge cases the keyword map can't — e.g. "PETER'S OF KENSINGTON", "AIRTASKER", "PAYPAL *RANDOM_VENDOR".
+
+**Estimated accuracy improvement:** keyword-only covers ~60% on first import; with AI that rises to ~90%.
+
+**Implementation plan:**
+
+1. Add `ANTHROPIC_API_KEY` to `.env.example` and `apps/web/.env.local`
+2. Install `@anthropic-ai/sdk` in `apps/web/package.json`
+3. In `apps/web/lib/categorise.ts`, add a 4th step in `categoriseBatch()`:
+   ```ts
+   // Step 4: AI classification for any transactions still without a category
+   const uncategorised = transactions.filter(tx => !results.get(tx.externalId)?.category)
+   if (uncategorised.length > 0 && process.env.ANTHROPIC_API_KEY) {
+     const aiResults = await classifyWithClaude(uncategorised)
+     // merge aiResults into results map
+     // optionally persist ai-assigned rules with source: 'keyword' (lower precedence)
+   }
+   ```
+4. Implement `classifyWithClaude(txns)` — single API call, batched descriptions, structured output:
+   - Model: `claude-haiku-4-5` (fast + cheap: < $0.01 per 200-transaction import)
+   - Prompt: list of descriptions + the 16 category names, ask for JSON array of `{index, category}`
+   - Wrap in try/catch — AI failure must not abort the import
+5. Add `ANTHROPIC_API_KEY` to Vercel environment variables
+
+**Cost estimate:** ~$0.01 per import file of 200 transactions. Roughly $0.02–0.03/month for typical usage.
+
+**Latency impact:** ~1–3 seconds added to the import step (only for novel merchants not already in rules/keywords). After a few months of corrections, this call is skipped entirely for most imports.

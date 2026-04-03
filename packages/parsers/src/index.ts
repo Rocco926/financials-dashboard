@@ -35,17 +35,17 @@
  * console.log(result.format)        // 'csv' | 'qif' | 'ofx' | 'qbo'
  * ```
  */
-import { detectFormat } from './detect.js'
-import { parseCsv } from './parsers/csv.js'
-import { parseQif } from './parsers/qif.js'
-import { parseOfx } from './parsers/ofx.js'
+import { detectFormat } from './detect'
+import { parseCsv } from './parsers/csv'
+import { parseQif } from './parsers/qif'
+import { parseOfx } from './parsers/ofx'
 import type { FileFormat, ParseResult } from '@finance/types'
 
 // Re-export types so consumers can import everything from '@finance/parsers'
 // without also needing '@finance/types' as a direct dependency.
 export type { ParsedTransaction, ParseResult, FileFormat } from '@finance/types'
-export { detectFormat } from './detect.js'
-export { generateExternalId } from './hash.js'
+export { detectFormat } from './detect'
+export { generateExternalId } from './hash'
 
 /**
  * Parses a bank export file into normalised transactions.

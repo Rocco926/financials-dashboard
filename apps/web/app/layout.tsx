@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { DM_Sans } from 'next/font/google'
 import './globals.css'
 import { Nav } from '@/components/nav'
 import { auth } from '@/auth'
 
-const inter = Inter({ subsets: ['latin'] })
+const dmSans = DM_Sans({ subsets: ['latin'], weight: ['300', '400', '500', '600'] })
 
 export const metadata: Metadata = {
   title: 'Finance Dashboard',
@@ -20,10 +20,10 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <div className="flex h-screen bg-gray-50">
+      <body className={dmSans.className}>
+        <div className="flex h-dvh bg-[#F7F6F3]">
           {session && <Nav />}
-          <main className="flex-1 overflow-auto">{children}</main>
+          <main className="flex-1 overflow-auto text-pretty">{children}</main>
         </div>
       </body>
     </html>

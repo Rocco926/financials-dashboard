@@ -53,10 +53,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
-import { accounts, transactions, importLog } from '@/lib/db'
-import { eq } from 'drizzle-orm'
+import { accounts, transactions, importLog, holdings } from '@/lib/db'
+import { eq, and, isNotNull, desc } from 'drizzle-orm'
 import { parse } from '@finance/parsers'
 import { z } from 'zod'
+import { categoriseBatch } from '@/lib/categorise'
 
 /**
  * Validates the account creation fields when creating a new account during import.
@@ -183,39 +184,55 @@ export async function POST(request: NextRequest) {
     // Collect non-fatal parse warnings from the parser (prefixed with filename)
     allErrors.push(...parseResult.parseErrors.map((e) => `${file.name}: ${e}`))
 
+    // ── Auto-categorise before insert ──────────────────────────────────────────
+    // Runs the 3-step pipeline: category_rules → bank-provided → keyword map.
+    // Non-fatal: if categorisation fails, transactions still import with null category.
+    let categoryMap: Awaited<ReturnType<typeof categoriseBatch>> = new Map()
+    try {
+      categoryMap = await categoriseBatch(parseResult.transactions)
+    } catch {
+      // Categorisation failure is non-fatal — import proceeds without categories
+    }
+
     let fileImported = 0
     let fileSkipped  = 0
 
-    // Insert each parsed transaction into the database.
-    // We insert one-by-one (not in bulk) so we can track individual conflicts.
-    for (const tx of parseResult.transactions) {
+    // Batch insert in chunks of 100 to avoid enormous single statements while
+    // still being dramatically faster than one-by-one inserts.
+    // onConflictDoNothing skips rows whose externalId already exists.
+    // We count inserted = rows returned; skipped = chunk size - inserted.
+    const CHUNK = 100
+    for (let i = 0; i < parseResult.transactions.length; i += CHUNK) {
+      const chunk = parseResult.transactions.slice(i, i + CHUNK)
       try {
         const inserted = await db
           .insert(transactions)
-          .values({
-            externalId:  tx.externalId,
-            accountId,
-            date:        tx.date.toISOString().split('T')[0]!,  // → 'YYYY-MM-DD'
-            amount:      String(tx.amount),                       // numeric → string for Drizzle
-            description: tx.description,
-            merchant:    tx.description,  // User can edit this later via the transactions page
-            type:        tx.type,
-            balance:     tx.balance !== undefined ? String(tx.balance) : null,
-            rawData:     tx.rawData,
-          })
+          .values(
+            chunk.map((tx) => {
+              const cat = categoryMap.get(tx.externalId)
+              return {
+                externalId:  tx.externalId,
+                accountId,
+                date:        tx.date.toISOString().split('T')[0]!,
+                amount:      String(tx.amount),
+                description: tx.description,
+                // Use bank-provided merchant name if available, otherwise raw description
+                merchant:    cat?.merchant ?? tx.description,
+                category:    cat?.category ?? null,
+                type:        tx.type,
+                balance:     tx.balance !== undefined ? String(tx.balance) : null,
+                rawData:     tx.rawData,
+              }
+            }),
+          )
           .onConflictDoNothing({ target: transactions.externalId })
           .returning({ id: transactions.id })
 
-        // .returning() returns rows that were actually inserted.
-        // An empty array means the conflict fired and the row was skipped.
-        if (inserted.length > 0) {
-          fileImported++
-        } else {
-          fileSkipped++
-        }
+        fileImported += inserted.length
+        fileSkipped  += chunk.length - inserted.length
       } catch (err) {
         allErrors.push(
-          `${file.name} tx ${tx.externalId}: ${err instanceof Error ? err.message : String(err)}`,
+          `${file.name}: ${err instanceof Error ? err.message : String(err)}`,
         )
       }
     }
@@ -236,12 +253,42 @@ export async function POST(request: NextRequest) {
 
   // ── Step 3: Update account's lastImportedAt timestamp ─────────────────────
 
-  // This timestamp is shown in the accounts list so the user can see when
-  // data for each account was last refreshed.
   await db
     .update(accounts)
     .set({ lastImportedAt: new Date() })
     .where(eq(accounts.id, accountId))
+
+  // ── Step 4: Auto-sync linked cash holdings ─────────────────────────────────
+  //
+  // If any cash/other holdings are linked to this account, update their
+  // manualBalance to the most recent transaction's running balance.
+  // This means the user never has to manually update their Westpac savings
+  // balance — it syncs automatically every time they import a statement.
+  //
+  // Only runs when new transactions were imported (not on re-import of an
+  // already-seen file, where totalImported would be 0).
+  if (totalImported > 0) {
+    // Find the latest balance value from this account's transactions
+    const [latestTx] = await db
+      .select({ balance: transactions.balance })
+      .from(transactions)
+      .where(and(
+        eq(transactions.accountId, accountId),
+        isNotNull(transactions.balance),
+      ))
+      .orderBy(desc(transactions.date), desc(transactions.createdAt))
+      .limit(1)
+
+    if (latestTx?.balance != null) {
+      // Update all cash/other holdings linked to this account
+      await db
+        .update(holdings)
+        .set({ manualBalance: latestTx.balance, updatedAt: new Date() })
+        .where(and(
+          eq(holdings.linkedAccountId, accountId),
+        ))
+    }
+  }
 
   return NextResponse.json({
     imported:  totalImported,

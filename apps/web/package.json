@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@finance/db": "workspace:*",
+    "drizzle-orm": "^0.45.2",
     "@finance/parsers": "workspace:*",
     "@finance/types": "workspace:*",
     "bcryptjs": "^2.4.3",

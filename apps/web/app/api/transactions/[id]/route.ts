@@ -42,7 +42,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
-import { transactions } from '@/lib/db'
+import { transactions, categoryRules } from '@/lib/db'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
@@ -92,10 +92,24 @@ export async function PATCH(
     .update(transactions)
     .set(updates)
     .where(eq(transactions.id, params.id))
-    .returning({ id: transactions.id })
+    .returning({ id: transactions.id, description: transactions.description })
 
   if (!updated) {
     return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
+  }
+
+  // If the user changed the category, persist a category_rules entry so future
+  // imports of the same merchant are automatically categorised the same way.
+  // ON CONFLICT UPDATE ensures a later correction overwrites an earlier one.
+  if ('category' in parsed.data && parsed.data.category) {
+    const pattern = updated.description.toUpperCase().trim()
+    await db
+      .insert(categoryRules)
+      .values({ merchantPattern: pattern, category: parsed.data.category, source: 'manual' })
+      .onConflictDoUpdate({
+        target:  categoryRules.merchantPattern,
+        set:     { category: parsed.data.category, source: 'manual', updatedAt: new Date() },
+      })
   }
 
   return NextResponse.json({ success: true })

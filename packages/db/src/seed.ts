@@ -4,31 +4,59 @@
  *
  * Usage: pnpm db:seed  (from monorepo root)
  */
-import { db } from './client.js'
-import { categories } from './schema.js'
+import { db } from './client'
+import { categories } from './schema'
 import { sql } from 'drizzle-orm'
 
-const DEFAULT_CATEGORIES = [
-  { name: 'Income',            colour: '#22c55e', isIncome: true  },
-  { name: 'Groceries',         colour: '#f59e0b', isIncome: false },
-  { name: 'Dining & Takeaway', colour: '#f97316', isIncome: false },
-  { name: 'Transport',         colour: '#3b82f6', isIncome: false },
-  { name: 'Fuel',              colour: '#6366f1', isIncome: false },
-  { name: 'Utilities',         colour: '#8b5cf6', isIncome: false },
-  { name: 'Rent/Mortgage',     colour: '#ec4899', isIncome: false },
-  { name: 'Insurance',         colour: '#14b8a6', isIncome: false },
-  { name: 'Health & Medical',  colour: '#ef4444', isIncome: false },
-  { name: 'Entertainment',     colour: '#a855f7', isIncome: false },
-  { name: 'Shopping',          colour: '#f43f5e', isIncome: false },
-  { name: 'Subscriptions',     colour: '#0ea5e9', isIncome: false },
-  { name: 'Travel',            colour: '#84cc16', isIncome: false },
-  { name: 'ATM/Cash',          colour: '#78716c', isIncome: false },
-  { name: 'Fees & Charges',    colour: '#dc2626', isIncome: false },
-  { name: 'Other',             colour: '#6b7280', isIncome: false },
-] as const
+const DEFAULT_CATEGORIES: Array<{
+  name: string
+  colour: string
+  isIncome: boolean
+  isTransfer?: boolean
+}> = [
+  { name: 'Income',                colour: '#22c55e', isIncome: true  },
+  { name: 'Transfers, Savings & Investments', colour: '#94a3b8', isIncome: false, isTransfer: true },
+  { name: 'Groceries',             colour: '#f59e0b', isIncome: false },
+  { name: 'Dining & Takeaway',     colour: '#f97316', isIncome: false },
+  { name: 'Transport',             colour: '#3b82f6', isIncome: false },
+  { name: 'Fuel',                  colour: '#6366f1', isIncome: false },
+  { name: 'Utilities',             colour: '#8b5cf6', isIncome: false },
+  { name: 'Rent/Mortgage',         colour: '#ec4899', isIncome: false },
+  { name: 'Insurance',             colour: '#14b8a6', isIncome: false },
+  { name: 'Health & Medical',      colour: '#ef4444', isIncome: false },
+  { name: 'Entertainment',         colour: '#a855f7', isIncome: false },
+  { name: 'Shopping',              colour: '#f43f5e', isIncome: false },
+  { name: 'Subscriptions',         colour: '#0ea5e9', isIncome: false },
+  { name: 'Travel',                colour: '#84cc16', isIncome: false },
+  { name: 'ATM/Cash',              colour: '#78716c', isIncome: false },
+  { name: 'Fees & Charges',        colour: '#dc2626', isIncome: false },
+  { name: 'Other',                 colour: '#6b7280', isIncome: false },
+]
+
+// One-time renames: if an old name exists, update it to the new name.
+// ON UPDATE CASCADE propagates the rename to all transactions.category FKs.
+const RENAMES: Array<{ from: string; to: string }> = [
+  { from: 'Transfers & Savings', to: 'Transfers, Savings & Investments' },
+]
 
 async function seed() {
   console.log('Seeding categories...')
+
+  // Apply renames. Check whether the target already exists first to avoid
+  // unique-key conflicts (possible if seed was partially run before).
+  for (const { from, to } of RENAMES) {
+    const existing = await db.execute(
+      sql`SELECT 1 FROM categories WHERE name = ${to} LIMIT 1`,
+    )
+    if ((existing as unknown[]).length > 0) {
+      // Target already exists — just clean up the stale old row.
+      // ON DELETE SET NULL cascades to transactions.category automatically.
+      await db.execute(sql`DELETE FROM categories WHERE name = ${from}`)
+    } else {
+      // Safe to rename — ON UPDATE CASCADE propagates to transactions.
+      await db.execute(sql`UPDATE categories SET name = ${to} WHERE name = ${from}`)
+    }
+  }
 
   for (const cat of DEFAULT_CATEGORIES) {
     await db

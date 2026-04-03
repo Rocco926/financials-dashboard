@@ -1,0 +1,6 @@
+Date,Amount,Account Number,,Transaction Type,Transaction Details,Balance,Category,Merchant Name,Processed On
+29 Mar 24,-45.50,Card ending 1234,,PURCHASE AUTHORISATION,WOOLWORTHS METRO SYDNEY 036,-1234.56,Groceries,Woolworths,
+28 Mar 24,3000.00,Card ending 1234,,CREDIT,SALARY PAYMENT ACME PTY LTD,-1189.06,Income,,
+27 Mar 24,-550.00,Card ending 1234,,TRANSFER,OSKO PAYMENT TO JOHN SMITH,-4189.06,Transfers,,
+26 Mar 24,-89.40,Card ending 1234,,PURCHASE AUTHORISATION,COLES SUPERMARKETS BROADWAY 036,-3599.66,Groceries,Coles (Broadway Sydney),
+25 Mar 24,12.50,Card ending 1234,,CREDIT,INTEREST EARNED,-3587.16,Income,,

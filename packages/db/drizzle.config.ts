@@ -50,4 +50,12 @@ export default defineConfig({
      */
     url: process.env['DIRECT_URL'] ?? process.env['DATABASE_URL'] ?? '',
   },
+
+  /**
+   * Only introspect the public schema.
+   * Supabase includes internal schemas (auth, realtime, storage) that contain
+   * their own enums and tables. Without this filter, drizzle-kit asks about
+   * every Supabase-internal enum when running db:push.
+   */
+  schemaFilter: ['public'],
 })

@@ -68,7 +68,7 @@
  *   <ACCTID>     Account number (used to suggest account name)
  *   <CURDEF>     Currency code (e.g. AUD)
  */
-import { generateExternalId } from '../hash.js'
+import { generateExternalId } from '../hash'
 import type { FileFormat, ParsedTransaction, ParseResult } from '@finance/types'
 
 /**

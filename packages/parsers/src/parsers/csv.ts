@@ -5,9 +5,9 @@
  * ─────────────────
  * This module auto-detects and handles two distinct CSV layouts:
  *
- *   WESTPAC CSV
- *   ───────────
- *   Exported via: Westpac Online Banking → Transactions → Export → CSV
+ *   WESTPAC CSV (classic)
+ *   ─────────────────────
+ *   Exported via: Westpac Online Banking → Transactions → Export → CSV (older flow)
  *   Headers: BSB Number, Account Number, Transaction Date, Narration,
  *            Cheque Number, Debit, Credit, Balance, Transaction Type
  *
@@ -18,8 +18,21 @@
  *   • Date format: DD/MM/YYYY (e.g. 29/03/2024)
  *   • Balance column is present and reliable.
  *
- *   NAB CSV
- *   ───────
+ *   WESTPAC CSV (account history export)
+ *   ──────────────────────────────────────
+ *   Exported via: Westpac Online Banking → Account → Export (newer "Data export" flow)
+ *   Headers: Bank Account, Date, Narrative, Debit Amount, Credit Amount,
+ *            Balance, Categories, Serial
+ *
+ *   Key quirks:
+ *   • Same split debit/credit approach as classic Westpac, but column names differ:
+ *     "Debit Amount" / "Credit Amount" instead of "Debit" / "Credit".
+ *   • No signed "Amount" column — must use the split columns.
+ *   • "Bank Account" contains the account number (ignored).
+ *   • "Categories" and "Serial" are Westpac-internal fields (ignored).
+ *
+ *   NAB CSV (classic)
+ *   ─────────────────
  *   Exported via: NAB Internet Banking → Export transactions → CSV
  *   Headers: Date, Amount, Narrative, Debit, Credit, Balance, Categories, Serial
  *
@@ -30,11 +43,26 @@
  *   • Balance column is present.
  *   • Categories and Serial are NAB-internal fields we ignore.
  *
+ *   NAB CSV (newer "Transactions" export)
+ *   ──────────────────────────────────────
+ *   Exported via: NAB app / Internet Banking → Transactions → Export
+ *   Headers: Date, Amount, Account Number, (blank), Transaction Type,
+ *            Transaction Details, Balance, Category, Merchant Name, Processed On
+ *
+ *   Key quirks:
+ *   • Amount is signed (same as classic NAB).
+ *   • Date format: "DD Mon YY" e.g. "03 Apr 26" (not DD/MM/YYYY).
+ *   • Description is in "Transaction Details" (not "Narrative").
+ *   • "Merchant Name" provides a cleaner merchant label when populated.
+ *   • Blank 4th column header is a NAB quirk — Papa.parse gives it an empty key.
+ *
  * DETECTION
  * ─────────
  * We identify the bank by checking which distinctive headers are present.
- * Westpac has "Transaction Date" + "Narration"; NAB has "Narrative" + "Amount".
- * If neither set is found, we return a clear error explaining what was expected.
+ * Westpac classic has "Transaction Date" + "Narration"; Westpac account history
+ * has "Narrative" + "Debit Amount" + "Credit Amount"; NAB classic has
+ * "Narrative" + "Amount"; NAB newer export has "Transaction Details" + "Amount".
+ * If no set matches, we return a clear error explaining what was expected.
  *
  * ERROR HANDLING
  * ──────────────
@@ -44,14 +72,14 @@
  */
 import Papa from 'papaparse'
 import { parse as parseDate } from 'date-fns'
-import { generateExternalId } from '../hash.js'
+import { generateExternalId } from '../hash'
 import type { ParsedTransaction, ParseResult } from '@finance/types'
 
 /** Each parsed CSV row is a plain object from column name to string value. */
 type CsvRow = Record<string, string>
 
 /** Which bank's CSV format was detected from the headers. */
-type CsvVariant = 'westpac' | 'nab' | 'unknown'
+type CsvVariant = 'westpac' | 'westpac2' | 'nab' | 'nab2' | 'unknown'
 
 /**
  * Sniffs the CSV headers to determine which bank this file came from.
@@ -66,11 +94,18 @@ type CsvVariant = 'westpac' | 'nab' | 'unknown'
 function detectVariant(headers: string[]): CsvVariant {
   const set = new Set(headers.map((h) => h.trim().toLowerCase()))
 
-  // Westpac: only bank with "Transaction Date" and "Narration" (with an 'a')
+  // Westpac classic: "Transaction Date" + "Narration" (older export flow)
   if (set.has('transaction date') && set.has('narration')) return 'westpac'
 
-  // NAB: only bank with "Narrative" (with a 've') and a combined "Amount" column
+  // Westpac account history: "Narrative" + "Debit Amount" + "Credit Amount"
+  // (newer "Data export" flow — no combined Amount column)
+  if (set.has('narrative') && set.has('debit amount') && set.has('credit amount')) return 'westpac2'
+
+  // NAB classic: "Narrative" + a combined signed "Amount" column
   if (set.has('narrative') && set.has('amount')) return 'nab'
+
+  // NAB newer export: "Transaction Details" + "Amount" (no Narrative column)
+  if (set.has('transaction details') && set.has('amount')) return 'nab2'
 
   return 'unknown'
 }
@@ -92,15 +127,25 @@ function detectVariant(headers: string[]): CsvVariant {
 function parseAuDate(raw: string): Date {
   const s = raw.trim()
 
-  // Primary: DD/MM/YYYY (Australian standard, used by all local banks)
-  const primary = parseDate(s, 'dd/MM/yyyy', new Date())
-  if (!isNaN(primary.getTime())) return primary
+  // Primary: DD/MM/YYYY (Australian standard, used by Westpac and NAB classic)
+  const slashFull = parseDate(s, 'dd/MM/yyyy', new Date())
+  if (!isNaN(slashFull.getTime())) return slashFull
 
-  // Fallback: YYYY-MM-DD (ISO format, just in case)
-  const fallback = parseDate(s, 'yyyy-MM-dd', new Date())
-  if (!isNaN(fallback.getTime())) return fallback
+  // NAB newer export: "DD Mon YY" e.g. "03 Apr 26"
+  // date-fns 'yy' interprets two-digit years relative to the current century,
+  // so "26" → 2026, "99" → 2099. Fine for bank statements.
+  const nabShort = parseDate(s, 'dd MMM yy', new Date())
+  if (!isNaN(nabShort.getTime())) return nabShort
 
-  throw new Error(`Cannot parse date "${s}" — expected DD/MM/YYYY`)
+  // Also accept "DD Mon YYYY" e.g. "03 Apr 2026" in case NAB ever switches
+  const nabFull = parseDate(s, 'dd MMM yyyy', new Date())
+  if (!isNaN(nabFull.getTime())) return nabFull
+
+  // Fallback: YYYY-MM-DD (ISO format)
+  const iso = parseDate(s, 'yyyy-MM-dd', new Date())
+  if (!isNaN(iso.getTime())) return iso
+
+  throw new Error(`Cannot parse date "${s}" — expected DD/MM/YYYY or DD Mon YY`)
 }
 
 /**
@@ -164,6 +209,62 @@ function parseWestpacRow(
 }
 
 /**
+ * Parses a single row from a Westpac account history CSV export.
+ *
+ * This is the newer Westpac "Data export" format (Data_export_DDMMYYYY.csv).
+ * Column names differ from classic Westpac but the debit/credit split logic
+ * is identical: one column will be populated, the other empty.
+ *
+ * Headers: Bank Account, Date, Narrative, Debit Amount, Credit Amount,
+ *          Balance, Categories, Serial
+ *
+ * @param row      - A single CSV row as a key→value object
+ * @param position - 1-based row number (for error messages and hash generation)
+ */
+function parseWestpac2Row(
+  row: CsvRow,
+  position: number,
+): ParsedTransaction | string {
+  try {
+    const dateStr     = (row['Date'] ?? '').trim()
+    const debitStr    = (row['Debit Amount'] ?? '').trim()
+    const creditStr   = (row['Credit Amount'] ?? '').trim()
+    const description = (row['Narrative'] ?? '').trim()
+    const balanceStr  = (row['Balance'] ?? '').trim()
+
+    if (!dateStr)     return `Row ${position}: missing Date`
+    if (!description) return `Row ${position}: missing Narrative`
+
+    const date = parseAuDate(dateStr)
+
+    let amount: number
+    if (creditStr !== '') {
+      amount = Math.abs(parseFloat(creditStr))   // money in → positive
+    } else if (debitStr !== '') {
+      amount = -Math.abs(parseFloat(debitStr))   // money out → negative
+    } else {
+      return `Row ${position}: both Debit Amount and Credit Amount are empty`
+    }
+
+    if (isNaN(amount)) return `Row ${position}: invalid amount`
+
+    const balance = balanceStr !== '' ? parseFloat(balanceStr) : undefined
+
+    return {
+      externalId: generateExternalId(date, amount, description, position),
+      date,
+      amount,
+      description,
+      balance,
+      type:    amount >= 0 ? 'credit' : 'debit',
+      rawData: row as Record<string, unknown>,
+    }
+  } catch (err) {
+    return `Row ${position}: ${err instanceof Error ? err.message : String(err)}`
+  }
+}
+
+/**
  * Parses a single row from a NAB CSV export.
  *
  * NAB uses a single signed `Amount` column (negative for debits, positive for
@@ -210,6 +311,64 @@ function parseNabRow(
 }
 
 /**
+ * Parses a single row from the newer NAB "Transactions" CSV export.
+ *
+ * This format replaced "Narrative" with "Transaction Details" and uses a
+ * "DD Mon YY" date style (e.g. "03 Apr 26"). It also exposes a "Merchant Name"
+ * column which, when populated, provides a cleaner label than the raw details.
+ *
+ * Headers: Date, Amount, Account Number, (blank), Transaction Type,
+ *          Transaction Details, Balance, Category, Merchant Name, Processed On
+ *
+ * @param row      - A single CSV row as a key→value object
+ * @param position - 1-based row number (for error messages and hash generation)
+ */
+function parseNab2Row(
+  row: CsvRow,
+  position: number,
+): ParsedTransaction | string {
+  try {
+    const dateStr     = (row['Date'] ?? '').trim()
+    const amountStr   = (row['Amount'] ?? '').trim()
+    const details     = (row['Transaction Details'] ?? '').trim()
+    const balanceStr  = (row['Balance'] ?? '').trim()
+
+    if (!dateStr)   return `Row ${position}: missing Date`
+    if (!amountStr) return `Row ${position}: missing Amount`
+    if (!details)   return `Row ${position}: missing Transaction Details`
+
+    const date   = parseAuDate(dateStr)
+    const amount = parseFloat(amountStr)
+    if (isNaN(amount)) return `Row ${position}: invalid amount "${amountStr}"`
+
+    const balance = balanceStr !== '' ? parseFloat(balanceStr) : undefined
+
+    // NAB provides a cleaner "Merchant Name" column and a "Category" column.
+    // We surface both as optional fields on ParsedTransaction so the import
+    // route can use them to pre-populate merchant and suggest a category
+    // without needing keyword matching.
+    const merchantName      = (row['Merchant Name'] ?? '').trim() || undefined
+    const suggestedCategory = (row['Category'] ?? '').trim() || undefined
+
+    // Use Transaction Details as the canonical description for deduplication
+    // (Merchant Name is bonus metadata, not stable enough for externalId)
+    return {
+      externalId: generateExternalId(date, amount, details, position),
+      date,
+      amount,
+      description: details,
+      balance,
+      type:    amount >= 0 ? 'credit' : 'debit',
+      merchantName,
+      suggestedCategory,
+      rawData: row as Record<string, unknown>,
+    }
+  } catch (err) {
+    return `Row ${position}: ${err instanceof Error ? err.message : String(err)}`
+  }
+}
+
+/**
  * Main entry point for CSV parsing.
  *
  * Delegates to Papa.parse for tokenisation, then routes each row through
@@ -239,7 +398,10 @@ export function parseCsv(content: string): ParseResult {
   if (variant === 'unknown') {
     parseErrors.push(
       `Unrecognised CSV format. Got headers: [${headers.join(', ')}]. ` +
-        `Expected Westpac (Transaction Date, Narration, Debit, Credit) or NAB (Date, Amount, Narrative).`,
+        `Expected Westpac classic (Transaction Date, Narration, Debit, Credit), ` +
+        `Westpac export (Date, Narrative, Debit Amount, Credit Amount), ` +
+        `NAB classic (Date, Amount, Narrative), ` +
+        `or NAB export (Date, Amount, Transaction Details).`,
     )
     return { transactions, currency: 'AUD', format: 'csv', parseErrors }
   }
@@ -251,9 +413,10 @@ export function parseCsv(content: string): ParseResult {
     if (!row) continue
 
     const result =
-      variant === 'westpac'
-        ? parseWestpacRow(row, i + 1)
-        : parseNabRow(row, i + 1)
+      variant === 'westpac'  ? parseWestpacRow(row, i + 1) :
+      variant === 'westpac2' ? parseWestpac2Row(row, i + 1) :
+      variant === 'nab2'     ? parseNab2Row(row, i + 1) :
+                               parseNabRow(row, i + 1)
 
     // String return = a non-fatal error for this row
     if (typeof result === 'string') {

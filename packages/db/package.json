@@ -5,27 +5,29 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
     },
     "./schema": {
-      "types": "./dist/schema.d.ts",
-      "default": "./dist/schema.js"
+      "types": "./src/schema.ts",
+      "default": "./src/schema.ts"
     }
   },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push",
-    "db:seed": "node --import tsx/esm src/seed.ts"
+    "db:push": "dotenv -e ../../apps/web/.env.local -- drizzle-kit push",
+    "db:seed": "dotenv -e ../../apps/web/.env.local -- node --import tsx/esm src/seed.ts"
   },
   "dependencies": {
-    "drizzle-orm": "^0.30.10",
+    "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.4"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.21.4",
+    "@types/node": "^20.12.7",
+    "dotenv-cli": "^11.0.0",
+    "drizzle-kit": "^0.31.10",
     "tsx": "^4.7.2",
     "typescript": "^5.4.0"
   }

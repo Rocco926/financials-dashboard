@@ -4,6 +4,31 @@
 
 @layer base {
   body {
-    @apply bg-white text-gray-900 antialiased;
+    background-color: #F7F6F3;
+    color: #37352F;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Subtle global border-radius for interactive elements */
+  input,
+  select,
+  textarea,
+  button {
+    border-radius: 4px;
+  }
+
+  /* Tabular numbers for all financial figures */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Section labels — warm, small, unobtrusive.
+     Deliberately NOT uppercase: all-caps adds visual noise in a soft UI.
+     Tracking is kept minimal so it reads as a label, not a heading. */
+  .section-label {
+    @apply text-xs font-medium text-[#ACABA8];
   }
 }

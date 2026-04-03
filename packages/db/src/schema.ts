@@ -169,6 +169,22 @@ export const categories = pgTable('categories', {
    */
   isIncome: boolean('is_income').notNull().default(false),
 
+  /**
+   * Whether this category represents an internal transfer between the user's
+   * own accounts (true) rather than a true expense.
+   * Examples: savings deposits, ETF purchases, credit card payments.
+   *
+   * Transfer transactions are EXCLUDED from:
+   *   - The Expenses metric on the dashboard
+   *   - The Monthly expenses bar chart
+   *   - The Spending by category donut chart
+   *   - The Budgets page spend calculations
+   *
+   * This corrects the common problem where moving money to a savings account
+   * inflates reported expenses. The "Transfers & Savings" category uses this.
+   */
+  isTransfer: boolean('is_transfer').notNull().default(false),
+
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -343,6 +359,197 @@ export const importLog = pgTable('import_log', {
   parseErrors: text('parse_errors').array(),
 
   importedAt: timestamp('imported_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ─── holdings ─────────────────────────────────────────────────────────────────
+
+/**
+ * The type of financial holding.
+ * Drives which fields are relevant in the UI and how value is computed.
+ *   cash   → value = manualBalance (user-entered)
+ *   etf    → value = units × current market price (fetched from Yahoo Finance)
+ *   stock  → same as etf
+ *   other  → manual balance, no ticker
+ */
+export const holdingTypeEnum = pgEnum('holding_type', ['cash', 'etf', 'stock', 'other'])
+
+/**
+ * A financial holding — either a cash account or a market security.
+ *
+ * Cash holdings (Macquarie HISA, Westpac savings): value is manually entered.
+ * Security holdings (ETFs, stocks): value = units × live price from Yahoo Finance.
+ *
+ * COST BASE
+ * ─────────
+ * avgCostPerUnit enables unrealised P&L calculation:
+ *   cost base  = units × avgCostPerUnit
+ *   gain/loss  = currentValue − costBase
+ *
+ * PRICE CACHE
+ * ──────────
+ * Current prices are stored in holding_price_cache (separate table) keyed by
+ * ticker. This avoids re-fetching from Yahoo Finance on every page load.
+ */
+export const holdings = pgTable('holdings', {
+  id:              uuid('id').defaultRandom().primaryKey(),
+  name:            text('name').notNull(),
+  institution:     text('institution').notNull(),
+  type:            holdingTypeEnum('type').notNull(),
+
+  /** ASX/NYSE/etc ticker symbol. e.g. "DHHF.AX", "BGBL.AX", "AAPL". Null for cash. */
+  ticker:          text('ticker'),
+
+  /** Number of units held. Supports fractional units (e.g. 123.4567). Null for cash. */
+  units:           numeric('units', { precision: 18, scale: 6 }),
+
+  /**
+   * Average cost per unit for cost base / P&L tracking.
+   * Computed by user based on their purchase history.
+   * Null means cost base tracking is not set up for this holding.
+   */
+  avgCostPerUnit:  numeric('avg_cost_per_unit', { precision: 12, scale: 4 }),
+
+  /** Current balance in AUD. Used for cash holdings. Null for securities. */
+  manualBalance:   numeric('manual_balance', { precision: 12, scale: 2 }),
+
+  currency:        text('currency').notNull().default('AUD'),
+  notes:           text('notes'),
+
+  /** Controls display order in the holdings table. Lower = higher up. */
+  sortOrder:       integer('sort_order').notNull().default(0),
+
+  /**
+   * Optional link to a bank account in the `accounts` table.
+   * When set on a cash/other holding, the import route will automatically
+   * update `manualBalance` to the most recent transaction's running balance
+   * after every successful import for that account.
+   *
+   * Only meaningful for cash/other holdings — ETF/stock holdings derive their
+   * value from units × live price and ignore this field.
+   *
+   * SET NULL on delete: if the linked account is deleted, the holding keeps
+   * its last known balance and just stops auto-updating.
+   */
+  linkedAccountId: uuid('linked_account_id')
+    .references(() => accounts.id, { onDelete: 'set null' }),
+
+  createdAt:       timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt:       timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ─── holding_price_cache ──────────────────────────────────────────────────────
+
+/**
+ * Cached market prices from Yahoo Finance.
+ *
+ * Keyed by ticker symbol. Prices are refreshed on page load when stale (> 1 hour).
+ * Falls back to cached price if Yahoo Finance is unavailable.
+ *
+ * WHY A SEPARATE TABLE?
+ * ─────────────────────
+ * Prices are volatile and fetched from an external API. Separating them from
+ * holdings keeps the holdings table stable (user-entered data) while letting
+ * prices update independently without touching holdings rows.
+ */
+export const holdingPriceCache = pgTable('holding_price_cache', {
+  ticker:    text('ticker').primaryKey(),
+  name:      text('name'),
+
+  /** Latest market price. */
+  price:     numeric('price', { precision: 12, scale: 4 }).notNull(),
+
+  /** Percentage change from previous close. Null if unavailable. */
+  changePct: numeric('change_pct', { precision: 8, scale: 4 }),
+
+  currency:  text('currency').notNull().default('AUD'),
+  fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ─── holding_snapshots ────────────────────────────────────────────────────────
+
+/**
+ * Daily snapshots of total net worth across all holdings.
+ *
+ * One row is written automatically per calendar day on the first page load.
+ * The UNIQUE constraint on snapshotDate ensures idempotency.
+ *
+ * These are used to draw the "Net worth over time" line chart.
+ * After a few weeks of use, this chart becomes genuinely useful.
+ *
+ * BREAKDOWN JSONB
+ * ───────────────
+ * Stores a point-in-time snapshot of each holding's value so you can
+ * reconstruct the portfolio composition on any given day.
+ * Shape: [{ holdingId, name, type, value, units, price }]
+ */
+export const holdingSnapshots = pgTable('holding_snapshots', {
+  id:           uuid('id').defaultRandom().primaryKey(),
+
+  /** One snapshot per calendar day. UNIQUE prevents duplicate daily entries. */
+  snapshotDate: date('snapshot_date').notNull().unique(),
+
+  /** Total value of all holdings on this date in AUD. */
+  totalValue:   numeric('total_value', { precision: 12, scale: 2 }).notNull(),
+
+  /** Per-holding breakdown for that day. */
+  breakdown:    jsonb('breakdown'),
+
+  createdAt:    timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// ─── category_rules ───────────────────────────────────────────────────────────
+
+/**
+ * Learned categorisation rules — the "corrections stick" table.
+ *
+ * A row is written here whenever the user manually corrects a transaction's
+ * category. On the next import, descriptions are matched against this table
+ * first (before the keyword map or AI). This means a correction made once is
+ * applied to all future transactions with the same merchant pattern.
+ *
+ * MATCHING STRATEGY
+ * ─────────────────
+ * `merchantPattern` stores the normalised description: uppercased and trimmed.
+ * The import route normalises incoming descriptions the same way before lookup.
+ * This is a simple equality match — no wildcards or regex.
+ *
+ * SOURCE COLUMN
+ * ─────────────
+ * Tracks where the rule came from:
+ *   'manual'  — user explicitly changed the category in the transactions UI
+ *   'nab'     — inferred from the NAB CSV's built-in Category column
+ *   'keyword' — matched by the static keyword map in lib/categorise.ts
+ *
+ * Manual rules take precedence over all other sources. The import pipeline
+ * checks this table first and always trusts the result.
+ */
+export const categoryRules = pgTable('category_rules', {
+  id:              uuid('id').defaultRandom().primaryKey(),
+
+  /**
+   * Normalised description used as the lookup key.
+   * Stored as UPPERCASE trimmed string to match how the import route normalises
+   * raw bank descriptions before querying this table.
+   * UNIQUE — one rule per unique description pattern.
+   */
+  merchantPattern: text('merchant_pattern').notNull().unique(),
+
+  /**
+   * The category to assign when this pattern matches.
+   * FK to categories.name (same approach as transactions.category).
+   * ON UPDATE CASCADE: renaming a category updates all matching rules.
+   * ON DELETE CASCADE: deleting a category removes its rules too.
+   */
+  category:        text('category').notNull().references(() => categories.name, {
+    onDelete: 'cascade',
+    onUpdate: 'cascade',
+  }),
+
+  /** Where this rule came from. Informational — not used for logic. */
+  source:          text('source').notNull().default('manual'),
+
+  createdAt:       timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt:       timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
 // ─── Inferred TypeScript types ────────────────────────────────────────────────

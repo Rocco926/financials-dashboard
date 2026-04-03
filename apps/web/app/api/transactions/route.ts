@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
 
   // Run data query and count query in parallel for efficiency.
   // Both use the same WHERE clause so they're consistent.
-  const [rows, [{ total }]] = await Promise.all([
+  const [rows, countRows] = await Promise.all([
     db
       .select({
         id:          transactions.id,
@@ -134,6 +134,8 @@ export async function GET(request: NextRequest) {
       .from(transactions)
       .where(where),
   ])
+
+  const total = countRows[0]?.total ?? 0
 
   return NextResponse.json({
     data: rows,
