@@ -23,15 +23,17 @@ function ProgressBar({ spent, budget }: { spent: number; budget: number }) {
   const over = spent > budget
 
   const barColour = over
-    ? 'bg-[#E5534B]'
-    : pct >= 75
-    ? 'bg-[#F0A500]'
-    : 'bg-[#4CAF7D]'
+    ? 'bg-tertiary'
+    : pct >= 90
+    ? 'bg-tertiary'
+    : pct >= 65
+    ? 'bg-[#f59e0b]'
+    : 'bg-primary-container'
 
   return (
-    <div className="w-full h-1.5 bg-[#EDE9E3] rounded-none overflow-hidden">
+    <div className="h-2 w-full bg-surface-container-low rounded-full overflow-hidden">
       <div
-        className={`h-full transition-all ${barColour}`}
+        className={`h-full transition-all duration-300 rounded-full ${barColour}`}
         style={{ width: `${pct}%` }}
       />
     </div>
@@ -63,7 +65,7 @@ function BudgetEditor({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[#ACABA8] text-sm">$</span>
+      <span className="text-secondary text-sm">$</span>
       <input
         type="number"
         value={value}
@@ -76,20 +78,20 @@ function BudgetEditor({
         min="0"
         placeholder="e.g. 500"
         autoFocus
-        className="w-24 border border-[#37352F] px-2 py-0.5 text-sm text-[#37352F] tabular-nums focus:outline-none"
+        className="w-24 border border-secondary-container bg-surface-container-low px-2 py-0.5 text-sm text-on-surface tabular-nums focus:outline-none focus:ring-1 focus:ring-primary rounded-lg"
       />
       <button
         onClick={handleSave}
         disabled={saving}
         aria-label="Save budget"
-        className="text-[#4CAF7D] hover:text-[#3a9e6a] transition-colors disabled:opacity-40"
+        className="text-primary hover:opacity-70 transition-opacity disabled:opacity-40"
       >
         <Check className="size-3.5" />
       </button>
       <button
         onClick={onCancel}
         aria-label="Cancel"
-        className="text-[#ACABA8] hover:text-[#37352F] transition-colors"
+        className="text-secondary hover:text-on-surface transition-colors"
       >
         <X className="size-3.5" />
       </button>
@@ -125,159 +127,116 @@ export function BudgetsClient({ initialRows }: Props) {
   const remaining     = totalBudgeted - totalSpent
 
   return (
-    <div className="space-y-8">
+    <div>
 
-      {/* Summary */}
+      {/* ── Summary row ── */}
       {withBudget.length > 0 && (
-        <div className="grid grid-cols-3 gap-0 border border-[#E9E7E2] divide-x divide-[#E9E7E2]">
-          <div className="px-6 py-4">
-            <p className="section-label text-[#787774]">Total budgeted</p>
-            <p className="text-2xl font-medium text-[#37352F] tabular-nums mt-1">
-              {formatCurrency(totalBudgeted)}
-            </p>
+        <div className="grid grid-cols-3 gap-6 mb-10">
+          {/* Total budgeted */}
+          <div className="bg-white p-6 rounded-3xl shadow-ambient flex flex-col justify-between min-h-[140px]">
+            <p className="text-xs font-medium text-secondary uppercase tracking-wider">Total budgeted</p>
+            <div>
+              <h3 className="text-3xl font-bold text-on-surface tracking-tight tabular-nums">
+                {formatCurrency(totalBudgeted)}
+              </h3>
+              <p className="text-[10px] text-secondary mt-1">
+                Across {withBudget.length} active {withBudget.length === 1 ? 'category' : 'categories'}
+              </p>
+            </div>
           </div>
-          <div className="px-6 py-4">
-            <p className="section-label text-[#787774]">Spent this month</p>
-            <p className="text-2xl font-medium text-[#37352F] tabular-nums mt-1">
-              {formatCurrency(totalSpent)}
-            </p>
+
+          {/* Total spent — always red per design */}
+          <div className="bg-white p-6 rounded-3xl shadow-ambient flex flex-col justify-between min-h-[140px]">
+            <p className="text-xs font-medium text-secondary uppercase tracking-wider">Total spent</p>
+            <div>
+              <h3 className="text-3xl font-bold text-tertiary tracking-tight tabular-nums">
+                {formatCurrency(totalSpent)}
+              </h3>
+            </div>
           </div>
-          <div className="px-6 py-4">
-            <p className="section-label text-[#787774]">Remaining</p>
-            <p
-              className={`text-2xl font-medium tabular-nums mt-1 ${
-                remaining >= 0 ? 'text-[#4CAF7D]' : 'text-[#E5534B]'
-              }`}
-            >
-              {remaining >= 0 ? '' : '-'}{formatCurrency(Math.abs(remaining))}
-            </p>
+
+          {/* Remaining */}
+          <div className="bg-white p-6 rounded-3xl shadow-ambient flex flex-col justify-between min-h-[140px]">
+            <p className="text-xs font-medium text-secondary uppercase tracking-wider">Remaining</p>
+            <div>
+              <h3 className={`text-3xl font-bold tracking-tight tabular-nums ${remaining >= 0 ? 'text-primary-container' : 'text-tertiary'}`}>
+                {remaining >= 0 ? '' : '-'}{formatCurrency(Math.abs(remaining))}
+              </h3>
+              {remaining >= 0 && totalBudgeted > 0 && (
+                <p className="text-[10px] text-primary-container font-medium mt-1">
+                  {Math.round((remaining / totalBudgeted) * 100)}% of budget available
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Categories with budgets */}
+      {/* ── Budget list card ── */}
       {withBudget.length > 0 && (
-        <div className="space-y-1">
-          <p className="section-label text-[#787774]">Budgets</p>
-          <div className="border border-[#E9E7E2] bg-white rounded-lg divide-y divide-[#EDE9E3]">
+        <div className="bg-white rounded-3xl shadow-ambient p-8 mb-6">
+          <div className="mb-8 flex justify-between items-end">
+            <h4 className="text-xs font-bold text-secondary uppercase tracking-widest">Monthly budgets</h4>
+          </div>
+
+          <div className="space-y-10">
             {withBudget.map((row) => {
-              const over       = row.spent > row.monthlyBudget!
-              const pct        = row.monthlyBudget! > 0
-                ? (row.spent / row.monthlyBudget!) * 100
-                : 0
-              const isEditing  = editingId === row.id
+              const over      = row.spent > row.monthlyBudget!
+              const isEditing = editingId === row.id
 
               return (
-                <div key={row.id} className="px-5 py-4 group">
-                  <div className="flex items-center justify-between mb-2">
-                    {/* Left: colour dot + name */}
-                    <div className="flex items-center gap-2.5">
-                      <span
-                        className="size-2 rounded-full shrink-0"
-                        style={{ backgroundColor: row.colour }}
-                      />
-                      <span className="text-sm font-medium text-[#37352F]">
-                        {row.name}
-                      </span>
-                    </div>
+                <div key={row.id} className="flex items-center group">
+                  {/* Icon box */}
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 mr-6 text-sm font-bold"
+                    style={{
+                      backgroundColor: over ? '#ffdad6' : row.colour + '22',
+                      color: over ? '#b02d29' : row.colour,
+                    }}
+                  >
+                    {row.name.charAt(0).toUpperCase()}
+                  </div>
 
-                    {/* Right: spent / budget + edit */}
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm tabular-nums text-[#787774]">
-                        <span className={over ? 'text-[#E5534B] font-medium' : 'text-[#37352F]'}>
-                          {formatCurrency(row.spent)}
-                        </span>
-                        {' / '}
-                        {isEditing ? (
-                          <BudgetEditor
-                            row={row}
-                            onSave={handleSave}
-                            onCancel={() => setEditingId(null)}
-                          />
-                        ) : (
-                          <span>{formatCurrency(row.monthlyBudget!)}</span>
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-baseline mb-2">
+                      <div className="flex items-center gap-3">
+                        <h5 className="text-sm font-bold text-on-surface">{row.name}</h5>
+                        {over && (
+                          <span className="bg-tertiary/10 text-tertiary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                            Over budget
+                          </span>
                         )}
-                      </span>
-                      {!isEditing && (
-                        <button
-                          onClick={() => setEditingId(row.id)}
-                          aria-label={`Edit budget for ${row.name}`}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-[#787774] hover:text-[#37352F]"
-                        >
-                          <Pencil className="size-3" />
-                        </button>
+                      </div>
+                      {isEditing ? (
+                        <BudgetEditor
+                          row={row}
+                          onSave={handleSave}
+                          onCancel={() => setEditingId(null)}
+                        />
+                      ) : (
+                        <span className={`text-xs font-medium tabular-nums ${over ? 'text-tertiary' : 'text-secondary'}`}>
+                          <b className={over ? 'text-tertiary' : 'text-on-surface'}>{formatCurrency(row.spent)}</b>
+                          {' of '}
+                          {formatCurrency(row.monthlyBudget!)}
+                        </span>
                       )}
                     </div>
+                    <ProgressBar spent={row.spent} budget={row.monthlyBudget!} />
                   </div>
 
-                  {/* Progress bar */}
-                  <ProgressBar spent={row.spent} budget={row.monthlyBudget!} />
-
-                  {/* Over-budget label */}
-                  {over && (
-                    <p className="text-xs text-[#E5534B] mt-1.5">
-                      {formatCurrency(row.spent - row.monthlyBudget!)} over budget
-                      {' '}({pct.toFixed(0)}%)
-                    </p>
-                  )}
-                  {!over && pct > 0 && (
-                    <p className="text-xs text-[#ACABA8] mt-1.5">
-                      {formatCurrency(row.monthlyBudget! - row.spent)} remaining
-                      {' '}· {pct.toFixed(0)}% used
-                    </p>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Categories without budgets */}
-      {withoutBudget.length > 0 && (
-        <div className="space-y-1">
-          <p className="section-label text-[#787774]">
-            {withBudget.length > 0 ? 'No budget set' : 'Categories'}
-          </p>
-          <p className="text-xs text-[#ACABA8] -mt-0.5 mb-2">
-            Click &ldquo;Set budget&rdquo; to start tracking a category.
-          </p>
-          <div className="border border-[#E9E7E2] bg-white rounded-lg divide-y divide-[#EDE9E3]">
-            {withoutBudget.map((row) => {
-              const isEditing = editingId === row.id
-              return (
-                <div
-                  key={row.id}
-                  className="flex items-center justify-between px-5 py-3 group hover:bg-[#F7F6F3] transition-colors"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      className="size-2 rounded-full shrink-0"
-                      style={{ backgroundColor: row.colour }}
-                    />
-                    <span className="text-sm text-[#37352F]">{row.name}</span>
-                    {row.spent > 0 && (
-                      <span className="text-xs text-[#ACABA8] tabular-nums">
-                        {formatCurrency(row.spent)} this month
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    {isEditing ? (
-                      <BudgetEditor
-                        row={row}
-                        onSave={handleSave}
-                        onCancel={() => setEditingId(null)}
-                      />
-                    ) : (
+                  {/* Hover actions */}
+                  {!isEditing && (
+                    <div className="ml-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                       <button
                         onClick={() => setEditingId(row.id)}
-                        className="text-xs text-[#787774] hover:text-[#37352F] transition-colors opacity-0 group-hover:opacity-100"
+                        aria-label={`Edit budget for ${row.name}`}
+                        className="text-secondary hover:text-on-surface transition-colors"
                       >
-                        Set budget
+                        <Pencil className="size-4" />
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -285,10 +244,55 @@ export function BudgetsClient({ initialRows }: Props) {
         </div>
       )}
 
+      {/* ── Categories without budgets ── */}
+      {withoutBudget.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-ambient divide-y divide-surface-container-low">
+          {withoutBudget.map((row) => {
+            const isEditing = editingId === row.id
+            return (
+              <div
+                key={row.id}
+                className="flex items-center justify-between px-6 py-3.5 group hover:bg-surface-container-low/50 transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className="size-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: row.colour }}
+                  />
+                  <span className="text-sm text-on-surface">{row.name}</span>
+                  {row.spent > 0 && (
+                    <span className="text-xs text-secondary tabular-nums">
+                      {formatCurrency(row.spent)} this month
+                    </span>
+                  )}
+                </div>
+                <div>
+                  {isEditing ? (
+                    <BudgetEditor
+                      row={row}
+                      onSave={handleSave}
+                      onCancel={() => setEditingId(null)}
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setEditingId(row.id)}
+                      className="text-xs text-secondary hover:text-on-surface transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      Set budget
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Empty state ── */}
       {rows.length === 0 && (
-        <div className="border border-[#E9E7E2] bg-white rounded-lg px-6 py-16 text-center">
-          <p className="text-sm text-[#787774]">No spending categories found.</p>
-          <p className="text-xs text-[#ACABA8] mt-1">
+        <div className="bg-white rounded-3xl shadow-ambient px-6 py-16 text-center">
+          <p className="text-sm text-secondary">No spending categories found.</p>
+          <p className="text-xs text-secondary mt-1">
             Run <code className="font-mono">pnpm db:seed</code> to seed default categories.
           </p>
         </div>

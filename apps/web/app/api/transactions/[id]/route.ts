@@ -114,3 +114,20 @@ export async function PATCH(
 
   return NextResponse.json({ success: true })
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const [deleted] = await db
+    .delete(transactions)
+    .where(eq(transactions.id, params.id))
+    .returning({ id: transactions.id })
+
+  if (!deleted) return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
+
+  return NextResponse.json({ success: true })
+}

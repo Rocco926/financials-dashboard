@@ -5,29 +5,32 @@ import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { CalendarDays } from 'lucide-react'
 
-const PERIODS = [
-  { value: 'month',    label: 'This month' },
-  { value: '3months',  label: '3 months'   },
-  { value: '12months', label: '12 months'  },
-  { value: 'all',      label: 'All time'   },
+const PRESETS = [
+  { value: '30days',  label: 'Last 30 days' },
+  { value: '3months', label: '3 months'     },
+  { value: '6months', label: '6 months'     },
+  { value: 'year',    label: 'This year'    },
+  { value: 'all',     label: 'All time'     },
 ] as const
 
 const inputCls =
-  'w-full bg-surface-container-low border border-secondary-container px-3 py-1.5 text-sm text-on-surface rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-[#C5C2BC] transition-all'
+  'w-full bg-surface-container-low border border-secondary-container px-3 py-1.5 text-sm text-on-surface rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all'
 
-export function PeriodSelector() {
+export function CategoriseRangeSelector() {
   const router       = useRouter()
   const pathname     = usePathname()
   const searchParams = useSearchParams()
-  const current      = searchParams.get('period') ?? 'month'
+  const current      = searchParams.get('range') ?? 'all'
   const isCustom     = current === 'custom'
 
   const [showPicker, setShowPicker] = useState(false)
+  // Pre-populate from URL when custom is already active
   const [customFrom, setCustomFrom] = useState(searchParams.get('from') ?? '')
   const [customTo,   setCustomTo]   = useState(searchParams.get('to')   ?? '')
 
   const pickerRef = useRef<HTMLDivElement>(null)
 
+  // Close picker on click-outside
   useEffect(() => {
     if (!showPicker) return
     function onMouseDown(e: MouseEvent) {
@@ -39,10 +42,10 @@ export function PeriodSelector() {
     return () => document.removeEventListener('mousedown', onMouseDown)
   }, [showPicker])
 
-  function setPeriod(value: string) {
+  function selectPreset(value: string) {
     setShowPicker(false)
     const params = new URLSearchParams()
-    params.set('period', value)
+    if (value !== 'all') params.set('range', value)
     router.push(`${pathname}?${params.toString()}`)
   }
 
@@ -50,26 +53,27 @@ export function PeriodSelector() {
     if (!customFrom || !customTo) return
     setShowPicker(false)
     const params = new URLSearchParams()
-    params.set('period', 'custom')
+    params.set('range', 'custom')
     params.set('from', customFrom)
     params.set('to', customTo)
     router.push(`${pathname}?${params.toString()}`)
   }
 
+  // Human-readable label for the Custom button when a range is active
   const customLabel = isCustom
     ? formatDateRange(searchParams.get('from'), searchParams.get('to'))
     : 'Custom'
 
   return (
     <div className="flex items-center gap-1 bg-white shadow-sm rounded-xl p-1 border border-secondary-container">
-      {PERIODS.map(({ value, label }) => (
+      {PRESETS.map(({ value, label }) => (
         <button
           key={value}
-          onClick={() => setPeriod(value)}
+          onClick={() => selectPreset(value)}
           className={cn(
             'text-sm px-3 py-1 rounded-lg transition-colors whitespace-nowrap',
             current === value
-              ? 'bg-secondary-container text-on-surface font-medium'
+              ? 'bg-surface-container-low text-on-surface font-medium'
               : 'text-secondary hover:text-on-surface',
           )}
         >
@@ -84,7 +88,7 @@ export function PeriodSelector() {
           className={cn(
             'flex items-center gap-1.5 text-sm px-3 py-1 rounded-lg transition-colors whitespace-nowrap',
             isCustom
-              ? 'bg-secondary-container text-on-surface font-medium'
+              ? 'bg-surface-container-low text-on-surface font-medium'
               : 'text-secondary hover:text-on-surface',
           )}
         >

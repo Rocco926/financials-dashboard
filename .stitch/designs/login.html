@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Ledger - Sign In</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary-dim": "#545350",
+                      "on-error-container": "#742410",
+                      "on-surface": "#2f3331",
+                      "surface-container-low": "#f4f4f1",
+                      "error-dim": "#5c1202",
+                      "secondary-fixed": "#e5e2de",
+                      "inverse-on-surface": "#9d9d9b",
+                      "surface-container": "#edeeeb",
+                      "background": "#faf9f7",
+                      "tertiary": "#006d45",
+                      "surface-dim": "#d7dbd7",
+                      "primary-container": "#e7e2d9",
+                      "on-background": "#2f3331",
+                      "primary-fixed": "#e7e2d9",
+                      "on-secondary-fixed": "#403f3d",
+                      "secondary-container": "#e5e2de",
+                      "outline-variant": "#afb3af",
+                      "tertiary-dim": "#00603c",
+                      "surface-container-lowest": "#ffffff",
+                      "inverse-surface": "#0d0e0e",
+                      "on-secondary-container": "#52524f",
+                      "on-tertiary-fixed": "#004b2e",
+                      "on-error": "#fff7f6",
+                      "tertiary-container": "#96fac2",
+                      "error": "#9e422c",
+                      "tertiary-fixed": "#96fac2",
+                      "surface-container-high": "#e6e9e5",
+                      "secondary": "#605f5c",
+                      "primary": "#615e57",
+                      "secondary-fixed-dim": "#d6d4d0",
+                      "on-tertiary": "#e7ffed",
+                      "primary-fixed-dim": "#d9d4cb",
+                      "on-primary": "#fdf7ee",
+                      "surface-bright": "#faf9f7",
+                      "surface-container-highest": "#e0e3e0",
+                      "outline": "#787c79",
+                      "on-primary-container": "#54514b",
+                      "inverse-primary": "#fef9ef",
+                      "tertiary-fixed-dim": "#88ebb4",
+                      "on-tertiary-container": "#00603c",
+                      "on-secondary": "#fbf8f4",
+                      "surface": "#faf9f7",
+                      "error-container": "#fe8b70",
+                      "on-primary-fixed": "#413f39",
+                      "surface-variant": "#e0e3e0",
+                      "surface-tint": "#615e57",
+                      "on-secondary-fixed-variant": "#5c5b59",
+                      "primary-dim": "#55524c",
+                      "on-surface-variant": "#5c605d",
+                      "on-tertiary-fixed-variant": "#006b44",
+                      "on-primary-fixed-variant": "#5e5b54"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Inter"],
+                      "body": ["Inter"],
+                      "label": ["Inter"]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FAF9F7;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col">
+<!-- TopAppBar Shared Component -->
+<header class="bg-[#FAF9F7] flex justify-between items-center px-6 py-4 w-full sticky top-0 z-50">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#615E57]" data-icon="account_balance">account_balance</span>
+<h1 class="font-['Inter'] font-semibold tracking-[-0.02em] leading-tight text-lg text-[#2F3331]">The Ledger</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#615E57] cursor-pointer" data-icon="help_outline">help_outline</span>
+</div>
+</header>
+<!-- Main Content: Login Shell -->
+<main class="flex-grow flex flex-col items-center justify-center px-8 pb-20">
+<div class="w-full max-w-[400px]">
+<!-- Branding/Identity Section -->
+<div class="mb-12 text-center md:text-left">
+<h2 class="text-3xl font-semibold tracking-[-0.03em] text-on-surface mb-3">Welcome back.</h2>
+<p class="text-on-surface-variant leading-relaxed">Enter your credentials to access your personal digital atelier.</p>
+</div>
+<!-- Login Form -->
+<form class="space-y-6">
+<!-- Email Input -->
+<div class="space-y-2">
+<label class="block text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant ml-1">Email Address</label>
+<div class="relative">
+<input class="w-full h-14 px-5 bg-surface-container-low border-none rounded-xl text-on-surface placeholder:text-outline focus:ring-1 focus:ring-primary focus:bg-surface-container-lowest transition-all duration-200" placeholder="hello@example.com" type="email"/>
+</div>
+</div>
+<!-- Password Input -->
+<div class="space-y-2">
+<div class="flex justify-between items-center px-1">
+<label class="text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant">Password</label>
+</div>
+<div class="relative group">
+<input class="w-full h-14 px-5 bg-surface-container-low border-none rounded-xl text-on-surface placeholder:text-outline focus:ring-1 focus:ring-primary focus:bg-surface-container-lowest transition-all duration-200" placeholder="••••••••" type="password"/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-primary hover:text-primary-dim px-2 py-1 transition-colors" type="button">
+                            Show
+                        </button>
+</div>
+</div>
+<!-- Remember & Forgot -->
+<div class="flex items-center justify-between px-1">
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="relative flex items-center justify-center">
+<input class="peer h-5 w-5 border-outline-variant bg-surface-container-low rounded focus:ring-0 text-primary transition-all" type="checkbox"/>
+</div>
+<span class="text-sm text-on-surface-variant group-hover:text-on-surface transition-colors">Remember me</span>
+</label>
+<a class="text-sm font-medium text-primary underline underline-offset-4 decoration-[0.5px] hover:text-primary-dim transition-colors" href="#">Forgot password?</a>
+</div>
+<!-- Primary Action -->
+<div class="pt-4">
+<button class="w-full h-14 bg-[#37352F] text-on-primary rounded-full font-semibold tracking-tight hover:shadow-lg active:scale-95 transition-all duration-200 flex items-center justify-center gap-2" type="submit">
+                        Sign In
+                        <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</form>
+<!-- Secondary Action -->
+<div class="mt-12 text-center">
+<p class="text-sm text-on-surface-variant">
+                    Don't have an account? 
+                    <a class="ml-1 font-semibold text-on-surface hover:underline decoration-1 underline-offset-4 transition-all" href="#">Create one</a>
+</p>
+</div>
+<!-- Visual Anchor: Decorative texture element -->
+<div class="mt-16 flex justify-center">
+<div class="w-12 h-[1px] bg-outline-variant opacity-30"></div>
+</div>
+<!-- Tonal Layering Mockup Area (Subtle Card) -->
+<div class="mt-12 p-6 rounded-xl bg-surface-container border border-outline-variant/10 flex items-start gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="security">security</span>
+</div>
+<div class="space-y-1">
+<h4 class="text-sm font-semibold text-on-surface">Secure Infrastructure</h4>
+<p class="text-xs text-on-surface-variant leading-relaxed">Your financial data is encrypted and managed with bank-level security protocols.</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Subtle footer indicator -->
+<footer class="py-8 px-6 text-center">
+<span class="text-[10px] font-medium uppercase tracking-[0.1em] text-outline opacity-60">The Ledger © 2024 • Crafted with intent</span>
+</footer>
+</body></html>

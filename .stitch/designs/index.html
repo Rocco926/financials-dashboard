@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Ledger - Personal Finance Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-highest": "#e0e3e0",
+                      "outline": "#787c79",
+                      "on-secondary-fixed-variant": "#5c5b59",
+                      "on-tertiary-container": "#00603c",
+                      "tertiary-container": "#96fac2",
+                      "inverse-surface": "#0d0e0e",
+                      "on-tertiary-fixed": "#004b2e",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-dim": "#55524c",
+                      "on-error": "#fff7f6",
+                      "on-background": "#2f3331",
+                      "primary-container": "#e7e2d9",
+                      "outline-variant": "#afb3af",
+                      "primary-fixed-dim": "#d9d4cb",
+                      "tertiary-dim": "#00603c",
+                      "surface-container-low": "#f4f4f1",
+                      "surface-container": "#edeeeb",
+                      "secondary": "#605f5c",
+                      "tertiary": "#006d45",
+                      "on-tertiary": "#e7ffed",
+                      "surface-tint": "#615e57",
+                      "secondary-container": "#e5e2de",
+                      "secondary-fixed-dim": "#d6d4d0",
+                      "error": "#9e422c",
+                      "on-secondary": "#fbf8f4",
+                      "on-tertiary-fixed-variant": "#006b44",
+                      "primary-fixed": "#e7e2d9",
+                      "on-surface": "#2f3331",
+                      "on-error-container": "#742410",
+                      "error-container": "#fe8b70",
+                      "tertiary-fixed": "#96fac2",
+                      "on-secondary-container": "#52524f",
+                      "on-secondary-fixed": "#403f3d",
+                      "on-primary-fixed": "#413f39",
+                      "surface-bright": "#faf9f7",
+                      "surface-variant": "#e0e3e0",
+                      "inverse-on-surface": "#9d9d9b",
+                      "secondary-fixed": "#e5e2de",
+                      "surface-container-high": "#e6e9e5",
+                      "inverse-primary": "#fef9ef",
+                      "error-dim": "#5c1202",
+                      "background": "#faf9f7",
+                      "on-primary-container": "#54514b",
+                      "tertiary-fixed-dim": "#88ebb4",
+                      "surface-dim": "#d7dbd7",
+                      "secondary-dim": "#545350",
+                      "on-primary": "#fdf7ee",
+                      "on-primary-fixed-variant": "#5e5b54",
+                      "primary": "#615e57",
+                      "on-surface-variant": "#5c605d",
+                      "surface": "#faf9f7"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Inter"],
+                      "body": ["Inter"],
+                      "label": ["Inter"]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body class="bg-background font-body text-on-surface antialiased min-h-screen flex">
+<!-- Shared SideNavBar Component -->
+<aside class="flex flex-col py-8 px-4 bg-[#FFFFFF] dark:bg-stone-900 rounded-[24px] m-4 w-64 h-[calc(100vh-32px)] sticky top-4 shadow-[0_0_24px_rgba(97,94,87,0.04)]">
+<div class="mb-10 px-4">
+<h1 class="text-xl font-semibold tracking-tight text-[#615E57] dark:text-stone-100">The Ledger</h1>
+<p class="text-xs uppercase tracking-widest text-on-surface-variant/60 font-medium">Personal Finance</p>
+</div>
+<nav class="flex-1 space-y-1">
+<!-- Active Tab: Dashboard -->
+<a class="flex items-center gap-3 py-3 px-4 transition-all duration-200 ease-out bg-[#E7E2D9] dark:bg-stone-800 text-[#615E57] dark:text-stone-100 font-medium rounded-full" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<!-- Inactive Tabs -->
+<a class="flex items-center gap-3 py-3 px-4 transition-all duration-200 ease-out text-[#5C605D] dark:text-stone-400 hover:text-[#615E57] hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span>Holdings</span>
+</a>
+<a class="flex items-center gap-3 py-3 px-4 transition-all duration-200 ease-out text-[#5C605D] dark:text-stone-400 hover:text-[#615E57] hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span>Transactions</span>
+</a>
+<a class="flex items-center gap-3 py-3 px-4 transition-all duration-200 ease-out text-[#5C605D] dark:text-stone-400 hover:text-[#615E57] hover:bg-stone-100 dark:hover:bg-stone-800 rounded-full" href="#">
+<span class="material-symbols-outlined" data-icon="savings">savings</span>
+<span>Budgets</span>
+</a>
+</nav>
+<div class="mt-auto px-4 pt-6 border-t border-outline-variant/10">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-primary font-bold text-xs">
+                    JD
+                </div>
+<div>
+<p class="text-sm font-medium text-on-surface leading-none">James D.</p>
+<p class="text-xs text-on-surface-variant">Premium Plan</p>
+</div>
+</div>
+<button class="w-full flex items-center justify-center gap-2 py-2 text-sm text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="logout">logout</span>
+                Sign out
+            </button>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 p-8 overflow-y-auto">
+<!-- Header Section -->
+<header class="flex justify-between items-end mb-10">
+<div>
+<h2 class="text-3xl font-semibold tracking-[-0.02em] text-on-surface">Dashboard</h2>
+<p class="text-on-surface-variant body-md mt-1">Welcome back, your portfolio is up 2.4% today.</p>
+</div>
+<div class="flex bg-surface-container-low p-1 rounded-full">
+<button class="px-4 py-1.5 text-sm font-medium rounded-full bg-primary-container text-on-primary-container shadow-sm">This month</button>
+<button class="px-4 py-1.5 text-sm font-medium rounded-full text-on-surface-variant hover:text-on-surface transition-colors">3 months</button>
+<button class="px-4 py-1.5 text-sm font-medium rounded-full text-on-surface-variant hover:text-on-surface transition-colors">12 months</button>
+<button class="px-4 py-1.5 text-sm font-medium rounded-full text-on-surface-variant hover:text-on-surface transition-colors">All time</button>
+<button class="px-4 py-1.5 text-sm font-medium rounded-full text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-sm align-middle" data-icon="tune">tune</span>
+</button>
+</div>
+</header>
+<!-- Summary Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+<!-- Income Card -->
+<div class="bg-surface-container-lowest p-6 rounded-[24px] shadow-[0_0_24px_rgba(97,94,87,0.04)] relative overflow-hidden group">
+<div class="flex justify-between items-start mb-4">
+<span class="text-on-surface-variant label-sm tracking-[0.05em] uppercase font-semibold">Income</span>
+<span class="material-symbols-outlined text-tertiary" data-icon="arrow_upward">arrow_upward</span>
+</div>
+<div class="tabular-nums text-4xl font-semibold text-tertiary tracking-tight">$8,450.00</div>
+<div class="mt-2 text-sm text-on-surface-variant flex items-center gap-1">
+<span class="text-tertiary font-medium">+12%</span> vs last month
+                </div>
+<!-- Subtle texture -->
+<div class="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-700">
+<span class="material-symbols-outlined text-[120px]" data-icon="payments">payments</span>
+</div>
+</div>
+<!-- Expenses Card -->
+<div class="bg-surface-container-lowest p-6 rounded-[24px] shadow-[0_0_24px_rgba(97,94,87,0.04)] relative overflow-hidden group">
+<div class="flex justify-between items-start mb-4">
+<div class="flex flex-col">
+<span class="text-on-surface-variant label-sm tracking-[0.05em] uppercase font-semibold">Expenses</span>
+<span class="text-[10px] text-on-surface-variant/60">transfers excluded</span>
+</div>
+<span class="material-symbols-outlined text-error" data-icon="arrow_downward">arrow_downward</span>
+</div>
+<div class="tabular-nums text-4xl font-semibold text-error tracking-tight">$3,210.50</div>
+<div class="mt-2 text-sm text-on-surface-variant flex items-center gap-1">
+<span class="text-error font-medium">+4%</span> vs last month
+                </div>
+<div class="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-700">
+<span class="material-symbols-outlined text-[120px]" data-icon="shopping_cart">shopping_cart</span>
+</div>
+</div>
+<!-- Savings Rate Card -->
+<div class="bg-surface-container-lowest p-6 rounded-[24px] shadow-[0_0_24px_rgba(97,94,87,0.04)] relative overflow-hidden group">
+<div class="flex justify-between items-start mb-4">
+<div class="flex flex-col">
+<span class="text-on-surface-variant label-sm tracking-[0.05em] uppercase font-semibold">Savings rate</span>
+<span class="text-[10px] text-tertiary">+$5,239.50 net</span>
+</div>
+<span class="material-symbols-outlined text-tertiary" data-icon="percentage">percent</span>
+</div>
+<div class="tabular-nums text-4xl font-semibold text-on-background tracking-tight">62%</div>
+<div class="mt-2 text-sm text-on-surface-variant flex items-center gap-1">
+                    Target is <span class="font-medium">50%</span>
+</div>
+<div class="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-700">
+<span class="material-symbols-outlined text-[120px]" data-icon="savings">savings</span>
+</div>
+</div>
+</div>
+<!-- Net Worth Card -->
+<section class="bg-surface-container-lowest p-8 rounded-[24px] shadow-[0_0_24px_rgba(97,94,87,0.04)] mb-8">
+<div class="flex justify-between items-start mb-8">
+<div>
+<h3 class="text-on-surface-variant label-sm tracking-[0.05em] uppercase font-semibold mb-1">Net worth</h3>
+<div class="tabular-nums text-5xl font-bold text-on-background tracking-tighter mb-2">$124,500.00</div>
+<p class="text-sm text-on-surface-variant">Combined investments &amp; cash holdings across 6 accounts</p>
+</div>
+<a class="flex items-center gap-1 text-primary font-medium text-sm hover:underline underline-offset-4 decoration-[0.5px]" href="#">
+                    View holdings
+                    <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</a>
+</div>
+<!-- Chart Panel -->
+<div class="w-full h-48 bg-surface-container-low rounded-xl relative overflow-hidden flex items-end">
+<!-- Mock Area Chart -->
+<div class="absolute inset-0 opacity-20">
+<svg class="w-full h-full preserve-aspect-ratio-none" viewbox="0 0 1000 200">
+<path d="M0 150 Q 150 140 250 160 T 500 100 T 750 120 T 1000 40 L 1000 200 L 0 200 Z" fill="#006d45"></path>
+<path d="M0 150 Q 150 140 250 160 T 500 100 T 750 120 T 1000 40" fill="none" stroke="#006d45" stroke-width="2"></path>
+</svg>
+</div>
+<div class="w-full px-8 flex justify-between pb-4 relative z-10 text-[10px] text-on-surface-variant/40 font-medium uppercase tracking-widest">
+<span>JAN</span><span>FEB</span><span>MAR</span><span>APR</span><span>MAY</span><span>JUN</span>
+</div>
+</div>
+</section>
+<!-- Charts Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+<!-- Monthly Bar Chart -->
+<div class="bg-surface-container-lowest p-8 rounded-[24px] shadow-[0_0_24px_rgba(97,94,87,0.04)]">
+<h4 class="text-lg font-semibold text-on-background mb-8">Monthly income vs expenses</h4>
+<div class="h-64 flex items-end gap-6 justify-between px-4">
+<!-- Bar Groups -->
+<div class="flex flex-col items-center gap-2 w-full">
+<div class="flex items-end gap-1 w-full h-40">
+<div class="bg-tertiary w-1/2 h-[70%] rounded-t-sm"></div>
+<div class="bg-error w-1/2 h-[40%] rounded-t-sm"></div>
+</div>
+<span class="text-[10px] text-on-surface-variant uppercase">Mar</span>
+</div>
+<div class="flex flex-col items-center gap-2 w-full">
+<div class="flex items-end gap-1 w-full h-40">
+<div class="bg-tertiary w-1/2 h-[85%] rounded-t-sm"></div>
+<div class="bg-error w-1/2 h-[45%] rounded-t-sm"></div>
+</div>
+<span class="text-[10px] text-on-surface-variant uppercase">Apr</span>
+</div>
+<div class="flex flex-col items-center gap-2 w-full">
+<div class="flex items-end gap-1 w-full h-40">
+<div class="bg-tertiary w-1/2 h-[60%] rounded-t-sm"></div>
+<div class="bg-error w-1/2 h-[50%] rounded-t-sm"></div>
+</div>
+<span class="text-[10px] text-on-surface-variant uppercase">May</span>
+</div>
+<div class="flex flex-col items-center gap-2 w-full">
+<div class="flex items-end gap-1 w-full h-40">
+<div class="bg-tertiary w-1/2 h-[95%] rounded-t-sm"></div>
+<div class="bg-error w-1/2 h-[35%] rounded-t-sm"></div>
+</div>
+<span class="text-[10px] text-on-surface-variant uppercase font-bold text-on-surface">Jun</span>
+</div>
+</div>
+<div class="flex gap-4 mt-8 justify-center">
+<div class="flex items-center gap-2 text-xs text-on-surface-variant">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span> Income
+                    </div>
+<div class="flex items-center gap-2 text-xs text-on-surface-variant">
+<span class="w-2 h-2 rounded-full bg-error"></span> Expenses
+                    </div>
+</div>
+</div>
+<!-- Spending Pie/Donut Chart -->
+<div class="bg-surface-container-lowest p-8 rounded-[24px] shadow-[0_0_24px_rgba(97,94,87,0.04)]">
+<h4 class="text-lg font-semibold text-on-background mb-8">Spending by category</h4>
+<div class="flex items-center gap-12 h-64">
+<div class="relative w-48 h-48 rounded-full border-[16px] border-surface-container flex items-center justify-center">
+<!-- Simulated Donut segments via border-conic -->
+<div class="absolute inset-[-16px] rounded-full border-[16px] border-transparent" style="border-top-color: #f59e0b; border-right-color: #f59e0b; transform: rotate(15deg);"></div>
+<div class="absolute inset-[-16px] rounded-full border-[16px] border-transparent" style="border-left-color: #f97316; border-bottom-color: #f97316; transform: rotate(120deg);"></div>
+<div class="text-center">
+<span class="block text-2xl font-bold text-on-background">$3,210</span>
+<span class="text-[10px] uppercase text-on-surface-variant">Total Spent</span>
+</div>
+</div>
+<div class="flex-1 space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 text-sm text-on-surface">
+<span class="w-3 h-3 rounded-sm bg-amber-500"></span> Groceries
+                            </div>
+<span class="text-sm font-semibold tabular-nums">42%</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 text-sm text-on-surface">
+<span class="w-3 h-3 rounded-sm bg-orange-500"></span> Dining
+                            </div>
+<span class="text-sm font-semibold tabular-nums">28%</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 text-sm text-on-surface">
+<span class="w-3 h-3 rounded-sm bg-primary"></span> Transport
+                            </div>
+<span class="text-sm font-semibold tabular-nums">15%</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 text-sm text-on-surface">
+<span class="w-3 h-3 rounded-sm bg-outline-variant"></span> Other
+                            </div>
+<span class="text-sm font-semibold tabular-nums">15%</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Transactions Table -->
+<section class="bg-surface-container-lowest p-8 rounded-[24px] shadow-[0_0_24px_rgba(97,94,87,0.04)]">
+<div class="flex justify-between items-center mb-8 px-2">
+<h3 class="text-lg font-semibold text-on-background">Recent transactions</h3>
+<a class="flex items-center gap-1 text-primary font-medium text-sm hover:underline underline-offset-4 decoration-[0.5px]" href="#">
+                    View all
+                    <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</a>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="border-b border-surface-container text-on-surface-variant label-sm tracking-[0.05em] uppercase font-semibold">
+<tr>
+<th class="py-4 px-2">Date</th>
+<th class="py-4 px-2">Description</th>
+<th class="py-4 px-2">Account</th>
+<th class="py-4 px-2">Category</th>
+<th class="py-4 px-2 text-right">Amount</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<tr class="hover:bg-surface-container-low transition-colors duration-200 group">
+<td class="py-5 px-2 text-sm text-on-surface-variant tabular-nums">Jun 24</td>
+<td class="py-5 px-2 font-medium text-on-surface">Woolworths Melbourne</td>
+<td class="py-5 px-2 text-sm text-on-surface-variant italic">Everyday Saver</td>
+<td class="py-5 px-2">
+<span class="px-3 py-1 bg-primary-container text-on-primary-container rounded-full text-[10px] font-bold uppercase tracking-wider">Groceries</span>
+</td>
+<td class="py-5 px-2 text-right font-bold tabular-nums text-on-background">-$142.30</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors duration-200 group">
+<td class="py-5 px-2 text-sm text-on-surface-variant tabular-nums">Jun 23</td>
+<td class="py-5 px-2 font-medium text-on-surface">Employer Salary Payment</td>
+<td class="py-5 px-2 text-sm text-on-surface-variant italic">HISA Account</td>
+<td class="py-5 px-2">
+<span class="px-3 py-1 bg-primary-container text-on-primary-container rounded-full text-[10px] font-bold uppercase tracking-wider">Income</span>
+</td>
+<td class="py-5 px-2 text-right font-bold tabular-nums text-tertiary">+$4,225.00</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors duration-200 group">
+<td class="py-5 px-2 text-sm text-on-surface-variant tabular-nums">Jun 22</td>
+<td class="py-5 px-2 font-medium text-on-surface">Coles Express South</td>
+<td class="py-5 px-2 text-sm text-on-surface-variant italic">Visa Platinum</td>
+<td class="py-5 px-2">
+<span class="px-3 py-1 bg-primary-container text-on-primary-container rounded-full text-[10px] font-bold uppercase tracking-wider">Transport</span>
+</td>
+<td class="py-5 px-2 text-right font-bold tabular-nums text-on-background">-$85.00</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors duration-200 group">
+<td class="py-5 px-2 text-sm text-on-surface-variant tabular-nums">Jun 21</td>
+<td class="py-5 px-2 font-medium text-on-surface">Netflix Australia</td>
+<td class="py-5 px-2 text-sm text-on-surface-variant italic">Visa Platinum</td>
+<td class="py-5 px-2">
+<span class="px-3 py-1 bg-primary-container text-on-primary-container rounded-full text-[10px] font-bold uppercase tracking-wider">Entertainment</span>
+</td>
+<td class="py-5 px-2 text-right font-bold tabular-nums text-on-background">-$22.99</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors duration-200 group">
+<td class="py-5 px-2 text-sm text-on-surface-variant tabular-nums">Jun 20</td>
+<td class="py-5 px-2 font-medium text-on-surface">Shell Service Station</td>
+<td class="py-5 px-2 text-sm text-on-surface-variant italic">Everyday Saver</td>
+<td class="py-5 px-2">
+<span class="px-3 py-1 bg-primary-container text-on-primary-container rounded-full text-[10px] font-bold uppercase tracking-wider">Transport</span>
+</td>
+<td class="py-5 px-2 text-right font-bold tabular-nums text-on-background">-$110.40</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors duration-200 group">
+<td class="py-5 px-2 text-sm text-on-surface-variant tabular-nums">Jun 19</td>
+<td class="py-5 px-2 font-medium text-on-surface">Bunnings Warehouse</td>
+<td class="py-5 px-2 text-sm text-on-surface-variant italic">Visa Platinum</td>
+<td class="py-5 px-2">
+<span class="px-3 py-1 bg-primary-container text-on-primary-container rounded-full text-[10px] font-bold uppercase tracking-wider">Home</span>
+</td>
+<td class="py-5 px-2 text-right font-bold tabular-nums text-on-background">-$342.15</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</main>
+</body></html>

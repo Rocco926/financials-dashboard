@@ -57,13 +57,17 @@ export default async function BudgetsPage() {
   })
 
   return (
-    <div className="px-10 py-8 space-y-8">
-      <div>
-        <h1 className="text-xl font-medium text-[#37352F]">Budgets</h1>
-        <p className="text-sm text-[#787774] mt-0.5">{monthName}</p>
+    <>
+      {/* Page header */}
+      <div className="flex justify-between items-center mb-10">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-on-surface">Budgets</h2>
+          <p className="text-sm text-secondary mt-1">Manage your monthly allocations</p>
+        </div>
+        <span className="text-sm text-secondary">{monthName}</span>
       </div>
 
       <BudgetsClient initialRows={rows} />
-    </div>
+    </>
   )
 }

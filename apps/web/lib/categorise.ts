@@ -67,10 +67,15 @@ const KEYWORD_MAP: [string, string][] = [
   ['PAYROLL',          'Income'],
   ['DIRECT CREDIT',    'Income'],
   ['WAGES',            'Income'],
-  ['INTEREST EARNED',  'Income'],
   ['CENTRELINK',       'Income'],
   ['TAX REFUND',       'Income'],
-  ['DIVIDEND',         'Income'],
+
+  // ── Interest Income ──────────────────────────────────────────────────────────
+  ['INTEREST EARNED',  'Interest Income'],
+  ['INTEREST PAID',    'Interest Income'],
+  ['INTEREST CREDIT',  'Interest Income'],
+  ['SAVINGS INTEREST', 'Interest Income'],
+  ['DIVIDEND',         'Interest Income'],
 
   // ── Groceries ────────────────────────────────────────────────────────────────
   ['WOOLWORTHS',       'Groceries'],
@@ -82,6 +87,20 @@ const KEYWORD_MAP: [string, string][] = [
   ['SPAR ',            'Groceries'],
   ['FOODWORKS',        'Groceries'],
   ['COSTCO',           'Groceries'],
+
+  // ── Coffee & Cafes ───────────────────────────────────────────────────────────
+  // Placed before Dining & Takeaway so "MECCA ESPRESSO" doesn't fall into
+  // Personal Care via the broader "MECCA" pattern further down.
+  ['THE COFFEE CLUB',  'Coffee & Cafes'],
+  ['CAMPOS',           'Coffee & Cafes'],
+  ['MECCA ESPRESSO',   'Coffee & Cafes'],
+  ['SEVEN SEEDS',      'Coffee & Cafes'],
+  ['SINGLE O ',        'Coffee & Cafes'],
+  ['TOBY ESTATE',      'Coffee & Cafes'],
+  ['ST ALI',           'Coffee & Cafes'],
+  ['RUSH ESPRESSO',    'Coffee & Cafes'],
+  ['CODE BLACK',       'Coffee & Cafes'],
+  ['SUNRISE COFFEE',   'Coffee & Cafes'],
 
   // ── Dining & Takeaway ────────────────────────────────────────────────────────
   ['UBER EATS',        'Dining & Takeaway'],
@@ -166,20 +185,62 @@ const KEYWORD_MAP: [string, string][] = [
   ['HCF ',             'Insurance'],
   ['AHM ',             'Insurance'],
 
-  // ── Health & Medical ─────────────────────────────────────────────────────────
-  ['PHARMACY',         'Health & Medical'],
-  ['CHEMIST',          'Health & Medical'],
-  ['PRICELINE',        'Health & Medical'],
-  ['TERRY WHITE',      'Health & Medical'],
-  ['AMCAL',            'Health & Medical'],
-  ['MEDICAL CENTRE',   'Health & Medical'],
-  ['DENTAL',           'Health & Medical'],
-  ['PATHOLOGY',        'Health & Medical'],
-  ['RADIOLOGY',        'Health & Medical'],
-  ['HOSPITAL',         'Health & Medical'],
-  ['HEALTHSCOPE',      'Health & Medical'],
-  ['SONIC HEALTH',     'Health & Medical'],
-  ['BULK BILL',        'Health & Medical'],
+  // ── Health & Fitness ─────────────────────────────────────────────────────────
+  // Placed BEFORE Medical — gym/fitness patterns are more specific
+  // and should not fall through to the medical category.
+  ['ANYTIME FITNESS',  'Health & Fitness'],
+  ['FITNESS FIRST',    'Health & Fitness'],
+  ['GOODLIFE HEALTH',  'Health & Fitness'],
+  ['F45 ',             'Health & Fitness'],
+  ['CROSSFIT',         'Health & Fitness'],
+  ['JETTS FITNESS',    'Health & Fitness'],
+  ['PLUS FITNESS',     'Health & Fitness'],
+  ['SNAP FITNESS',     'Health & Fitness'],
+  ['VIRGIN ACTIVE',    'Health & Fitness'],
+  ['PLANET FITNESS',   'Health & Fitness'],
+  ['ORANGE THEORY',    'Health & Fitness'],
+  ["BARRY'S ",         'Health & Fitness'],
+  ['BIKRAM',           'Health & Fitness'],
+  ['PILATES',          'Health & Fitness'],
+  ['GYM MEMBERSHIP',   'Health & Fitness'],
+
+  // ── Medical ──────────────────────────────────────────────────────────────────
+  ['PHARMACY',         'Medical'],
+  ['CHEMIST',          'Medical'],
+  ['PRICELINE',        'Medical'],
+  ['TERRY WHITE',      'Medical'],
+  ['AMCAL',            'Medical'],
+  ['MEDICAL CENTRE',   'Medical'],
+  ['DENTAL',           'Medical'],
+  ['PATHOLOGY',        'Medical'],
+  ['RADIOLOGY',        'Medical'],
+  ['HOSPITAL',         'Medical'],
+  ['HEALTHSCOPE',      'Medical'],
+  ['SONIC HEALTH',     'Medical'],
+  ['BULK BILL',        'Medical'],
+
+  // ── Personal Care ────────────────────────────────────────────────────────────
+  // Placed AFTER Coffee & Cafes (for MECCA ESPRESSO) and Health & Fitness.
+  // "MECCA " catches MECCA COSMETICA and MECCA MAXIMA after MECCA ESPRESSO is matched above.
+  ['MECCA COSMETICA',  'Personal Care'],
+  ['MECCA MAXIMA',     'Personal Care'],
+  ['MECCA ',           'Personal Care'],
+  ['SEPHORA',          'Personal Care'],
+  ['AESOP',            'Personal Care'],
+  ['KIEHL',            'Personal Care'],
+  ['LUSH ',            'Personal Care'],
+  ['THE BODY SHOP',    'Personal Care'],
+  ['HAIRHOUSE',        'Personal Care'],
+  ['GREAT CLIPS',      'Personal Care'],
+  ['SPORT CLIPS',      'Personal Care'],
+  ['HAIR SALON',       'Personal Care'],
+  ['BARBERSHOP',       'Personal Care'],
+  ['BARBER SHOP',      'Personal Care'],
+  ['NAIL BAR',         'Personal Care'],
+  ['NAIL SALON',       'Personal Care'],
+  ['DAY SPA',          'Personal Care'],
+  ['BEAUTY SALON',     'Personal Care'],
+  ['WAXING',           'Personal Care'],
 
   // ── Subscriptions ────────────────────────────────────────────────────────────
   ['NETFLIX',          'Subscriptions'],
@@ -215,6 +276,53 @@ const KEYWORD_MAP: [string, string][] = [
   ['XBOX ',            'Entertainment'],
   ['NINTENDO',         'Entertainment'],
 
+  // ── Pets ─────────────────────────────────────────────────────────────────────
+  ['PETBARN',          'Pets'],
+  ['PET BARN',         'Pets'],
+  ['PET CIRCLE',       'Pets'],
+  ['PETSTOCK',         'Pets'],
+  ['GREENCROSS VET',   'Pets'],
+  ['ANIMAL HOSPITAL',  'Pets'],
+  ['VETERINARY',       'Pets'],
+  ['PAWSHAKE',         'Pets'],
+  ['DOG WASH',         'Pets'],
+
+  // ── Education ────────────────────────────────────────────────────────────────
+  ['TAFE ',            'Education'],
+  ['UDEMY',            'Education'],
+  ['COURSERA',         'Education'],
+  ['SKILLSHARE',       'Education'],
+  ['DUOLINGO',         'Education'],
+  ['MASTERCLASS',      'Education'],
+  ['CHEGG',            'Education'],
+  ['SCRIBD',           'Education'],
+  ['PEARSON',          'Education'],
+  ['AUSTUDY',          'Education'],
+
+  // ── Gifts & Donations ────────────────────────────────────────────────────────
+  ['OXFAM',            'Gifts & Donations'],
+  ['CANCER COUNCIL',   'Gifts & Donations'],
+  ['RED CROSS',        'Gifts & Donations'],
+  ['SAVE THE CHILDREN','Gifts & Donations'],
+  ['WORLD VISION',     'Gifts & Donations'],
+  ['UNICEF',           'Gifts & Donations'],
+  ['BEYOND BLUE',      'Gifts & Donations'],
+  ['RSPCA',            'Gifts & Donations'],
+  ['ST VINCENT',       'Gifts & Donations'],
+  ['SALVOS',           'Gifts & Donations'],
+
+  // ── Home & Garden ────────────────────────────────────────────────────────────
+  // BUNNINGS is placed HERE (before Shopping) so it maps to Home & Garden.
+  ['BUNNINGS',         'Home & Garden'],
+  ['MITRE 10',         'Home & Garden'],
+  ['TOTAL TOOLS',      'Home & Garden'],
+  ['BEACON LIGHTING',  'Home & Garden'],
+  ['CLARK RUBBER',     'Home & Garden'],
+  ['GARDEN CENTRE',    'Home & Garden'],
+  ['GARDEN CENTER',    'Home & Garden'],
+  ['GARDEN SUPPLIES',  'Home & Garden'],
+  ['HARDWARE',         'Home & Garden'],
+
   // ── Shopping ─────────────────────────────────────────────────────────────────
   ['KMART',            'Shopping'],
   ['TARGET',           'Shopping'],
@@ -236,6 +344,11 @@ const KEYWORD_MAP: [string, string][] = [
   ['H&M',              'Shopping'],
   ['SPORTSGIRL',       'Shopping'],
   ['REBEL SPORT',      'Shopping'],
+  ['LORNA JANE',       'Shopping'],
+  ['COUNTRY ROAD',     'Shopping'],
+  ['WITCHERY',         'Shopping'],
+  ['GLUE STORE',       'Shopping'],
+  ['UNIVERSAL STORE',  'Shopping'],
 
   // ── Travel ───────────────────────────────────────────────────────────────────
   ['QANTAS',           'Travel'],
@@ -272,17 +385,30 @@ const KEYWORD_MAP: [string, string][] = [
 const NAB_CATEGORY_MAP: Record<string, string> = {
   'Groceries':    'Groceries',
   'Income':       'Income',
+  'Interest':     'Interest Income',
+  'Dividends':    'Interest Income',
   'Transfers':    'Transfers, Savings & Investments',
   'Dining Out':   'Dining & Takeaway',
+  'Cafe':         'Coffee & Cafes',
+  'Coffee':       'Coffee & Cafes',
   'Transport':    'Transport',
   'Petrol':       'Fuel',
-  'Health':       'Health & Medical',
+  'Health':       'Medical',
+  'Fitness':      'Health & Fitness',
+  'Gym':          'Health & Fitness',
+  'Beauty':       'Personal Care',
+  'Personal Care':'Personal Care',
+  'Pets':         'Pets',
+  'Education':    'Education',
+  'Charity':      'Gifts & Donations',
+  'Donations':    'Gifts & Donations',
   'Shopping':     'Shopping',
   'Travel':       'Travel',
   'Entertainment':'Entertainment',
   'Bills':        'Utilities',
   'Insurance':    'Insurance',
-  'Education':    'Other',
+  'Home':         'Home & Garden',
+  'Garden':       'Home & Garden',
   'ATM':          'ATM/Cash',
   'Fees':         'Fees & Charges',
 }

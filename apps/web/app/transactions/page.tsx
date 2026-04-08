@@ -1,10 +1,13 @@
 import { db } from '@/lib/db'
 import { transactions, accounts, categories } from '@/lib/db'
-import { and, eq, gte, lte, ilike, desc, count, sql } from 'drizzle-orm'
+import { and, eq, gte, lte, ilike, isNull, desc, count, sql } from 'drizzle-orm'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { CategoryEditor } from './category-editor'
+import { DeleteButton } from './delete-button'
+import { ClearAccountButton } from './clear-account-button'
+import { TransactionFilters } from './transaction-filters'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight, Upload } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Upload, Tags } from 'lucide-react'
 
 interface PageProps {
   searchParams: {
@@ -28,7 +31,11 @@ async function getTransactions(params: PageProps['searchParams']) {
   if (params.accountId) conditions.push(eq(transactions.accountId, params.accountId))
   if (params.from)      conditions.push(gte(transactions.date, params.from))
   if (params.to)        conditions.push(lte(transactions.date, params.to))
-  if (params.category)  conditions.push(eq(transactions.category, params.category))
+  if (params.category === '__uncategorised') {
+    conditions.push(isNull(transactions.category))
+  } else if (params.category) {
+    conditions.push(eq(transactions.category, params.category))
+  }
   if (params.type && (params.type === 'credit' || params.type === 'debit')) {
     conditions.push(eq(transactions.type, params.type))
   }
@@ -97,176 +104,161 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
 
   const hasFilters = Object.values(searchParams).some(Boolean)
 
-  return (
-    <div className="px-10 py-8 space-y-6">
+  const offset = (page - 1) * LIMIT
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-medium text-[#37352F] text-balance">Transactions</h1>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-[#787774]">{total.toLocaleString()} transactions</span>
+  return (
+    <>
+      {/* Page header */}
+      <header className="flex justify-between items-center h-20 mb-8">
+        <h2 className="text-3xl font-extrabold tracking-tight text-on-surface">Transactions</h2>
+        <div className="flex items-center gap-6">
+          <Link
+            href="/transactions/categorise"
+            className="text-primary font-bold hover:opacity-80 transition-opacity"
+          >
+            Categorise →
+          </Link>
+          <ClearAccountButton accounts={allAccounts} />
+          <span className="text-sm text-secondary">{total.toLocaleString()} transactions</span>
           <Link
             href="/import"
-            className="flex items-center gap-1.5 text-sm text-[#37352F] border border-[#37352F] px-3 py-1.5 hover:bg-[#37352F] hover:text-white transition-colors rounded-md"
+            className="flex items-center gap-1.5 text-sm font-medium text-on-surface bg-white border border-secondary-container px-3 py-1.5 hover:bg-surface-container-low transition-colors rounded-full shadow-ambient"
           >
             <Upload className="size-3.5" />
             Import
           </Link>
         </div>
-      </div>
+      </header>
 
-      {/* Filters — inline, understated */}
-      <form method="GET" className="flex flex-wrap items-center gap-2">
-        <input
-          name="search"
-          type="search"
-          placeholder="Search…"
-          defaultValue={searchParams.search}
-          className="border border-[#E9E7E2] bg-white px-3 py-1.5 text-sm text-[#37352F] placeholder:text-[#ACABA8] focus:outline-none focus:border-[#37352F] w-44 transition-colors rounded-md"
-        />
-        <select
-          name="accountId"
-          defaultValue={searchParams.accountId ?? ''}
-          className="border border-[#E9E7E2] bg-white px-3 py-1.5 text-sm text-[#37352F] focus:outline-none focus:border-[#37352F] transition-colors rounded-md"
-        >
-          <option value="">All accounts</option>
-          {allAccounts.map((a) => (
-            <option key={a.id} value={a.id}>{a.name}</option>
-          ))}
-        </select>
-        <select
-          name="category"
-          defaultValue={searchParams.category ?? ''}
-          className="border border-[#E9E7E2] bg-white px-3 py-1.5 text-sm text-[#37352F] focus:outline-none focus:border-[#37352F] transition-colors rounded-md"
-        >
-          <option value="">All categories</option>
-          {allCategories.map((c) => (
-            <option key={c.name} value={c.name}>{c.name}</option>
-          ))}
-        </select>
-        <select
-          name="type"
-          defaultValue={searchParams.type ?? ''}
-          className="border border-[#E9E7E2] bg-white px-3 py-1.5 text-sm text-[#37352F] focus:outline-none focus:border-[#37352F] transition-colors rounded-md"
-        >
-          <option value="">All types</option>
-          <option value="credit">Credits</option>
-          <option value="debit">Debits</option>
-        </select>
-        <input
-          name="from"
-          type="date"
-          defaultValue={searchParams.from}
-          className="border border-[#E9E7E2] bg-white px-3 py-1.5 text-sm text-[#37352F] focus:outline-none focus:border-[#37352F] transition-colors rounded-md"
-        />
-        <input
-          name="to"
-          type="date"
-          defaultValue={searchParams.to}
-          className="border border-[#E9E7E2] bg-white px-3 py-1.5 text-sm text-[#37352F] focus:outline-none focus:border-[#37352F] transition-colors rounded-md"
-        />
-        <button
-          type="submit"
-          className="px-3 py-1.5 text-sm text-[#37352F] border border-[#37352F] hover:bg-[#37352F] hover:text-white transition-colors rounded-md"
-        >
-          Filter
-        </button>
-        {hasFilters && (
-          <Link
-            href="/transactions"
-            className="px-3 py-1.5 text-sm text-[#787774] hover:text-[#37352F] transition-colors"
-          >
-            Clear
-          </Link>
-        )}
-      </form>
+      {/* Filter bar */}
+      <section className="mb-8">
+        <div className="bg-white rounded-2xl shadow-ambient px-6 py-4 flex flex-wrap lg:flex-nowrap items-center gap-4">
+          <TransactionFilters
+            accounts={allAccounts}
+            categories={allCategories}
+            current={searchParams}
+            hasFilters={hasFilters}
+          />
+        </div>
+      </section>
 
-      {/* Table */}
-      <div className="bg-white border border-[#E9E7E2] rounded-lg">
-        {rows.length === 0 ? (
-          <div className="px-6 py-16 text-center text-sm text-[#787774]">
-            No transactions found.{' '}
-            {!hasFilters && (
-              <Link href="/import" className="underline hover:text-[#37352F] transition-colors">
-                Import a file to get started.
-              </Link>
-            )}
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#E9E7E2]">
-                <th className="px-4 py-2.5 text-left section-label font-medium">Date</th>
-                <th className="px-4 py-2.5 text-left section-label font-medium">Description</th>
-                <th className="px-4 py-2.5 text-left section-label font-medium">Account</th>
-                <th className="px-4 py-2.5 text-left section-label font-medium">Category</th>
-                <th className="px-4 py-2.5 text-right section-label font-medium">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((tx) => (
-                <tr
-                  key={tx.id}
-                  className="border-b border-[#EDE9E3] last:border-0 hover:bg-[#F7F6F3] transition-colors"
-                >
-                  <td className="px-4 py-2.5 text-[#787774] whitespace-nowrap text-xs">
-                    {formatDate(tx.date)}
-                  </td>
-                  <td className="px-4 py-2.5 text-[#37352F] max-w-xs">
-                    <p className="truncate">{tx.merchant ?? tx.description}</p>
-                    {tx.merchant && tx.merchant !== tx.description && (
-                      <p className="text-xs text-[#ACABA8] truncate mt-0.5">{tx.description}</p>
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5 text-[#787774] text-xs whitespace-nowrap">
-                    {tx.accountName}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <CategoryEditor
-                      transactionId={tx.id}
-                      currentCategory={tx.category}
-                      categories={allCategories}
-                    />
-                  </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap font-medium">
-                    <span className={tx.type === 'credit' ? 'text-[#4CAF7D]' : 'text-[#37352F]'}>
-                      {tx.type === 'credit' ? '+' : ''}
-                      {formatCurrency(parseFloat(String(tx.amount)))}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {/* Transactions table card */}
+      <section className="bg-white rounded-2xl shadow-ambient overflow-hidden">
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-[#787774]">
-            Page {page} of {totalPages}
+        {/* Table header */}
+        <div className="bg-surface-container-low grid grid-cols-[100px_1fr_150px_150px_120px_60px] px-8 py-4 text-[11px] font-extrabold uppercase tracking-widest text-secondary/70">
+          <div>Date</div>
+          <div>Description</div>
+          <div>Account</div>
+          <div>Category</div>
+          <div className="text-right">Amount</div>
+          <div className="text-center" />
+        </div>
+
+        {/* Rows */}
+        <div className="divide-y divide-surface-container-low/60">
+          {rows.length === 0 ? (
+            <div className="px-6 py-16 text-center text-sm text-secondary">
+              No transactions found.{' '}
+              {!hasFilters && (
+                <Link href="/import" className="underline hover:text-on-surface transition-colors">
+                  Import a file to get started.
+                </Link>
+              )}
+            </div>
+          ) : (
+            rows.map((tx) => (
+              <div
+                key={tx.id}
+                className="grid grid-cols-[100px_1fr_150px_150px_120px_60px] items-center px-8 py-5 hover:bg-surface-container-low/40 transition-all duration-200 group"
+              >
+                {/* Date */}
+                <div className="text-sm text-secondary font-medium">
+                  {formatDate(tx.date)}
+                </div>
+
+                {/* Description / merchant */}
+                <div className="text-sm font-semibold text-on-surface min-w-0">
+                  <p className="truncate">{tx.merchant ?? tx.description}</p>
+                  {tx.merchant && tx.merchant !== tx.description && (
+                    <p className="text-xs text-secondary truncate mt-0.5">{tx.description}</p>
+                  )}
+                </div>
+
+                {/* Account */}
+                <div className="text-xs text-secondary italic truncate">
+                  {tx.accountName}
+                </div>
+
+                {/* Category */}
+                <div>
+                  <CategoryEditor
+                    transactionId={tx.id}
+                    currentCategory={tx.category}
+                    categories={allCategories}
+                    description={tx.description}
+                  />
+                </div>
+
+                {/* Amount */}
+                <div className={`text-sm font-bold text-right tabular-nums ${tx.type === 'credit' ? 'text-primary' : 'text-on-surface'}`}>
+                  {tx.type === 'credit' ? '+' : ''}
+                  {formatCurrency(parseFloat(String(tx.amount)))}
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <DeleteButton transactionId={tx.id} />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Table footer / pagination */}
+        <div className="bg-surface-container-low/50 px-8 py-4 flex justify-between items-center">
+          <span className="text-xs text-secondary">
+            Showing {Math.min(offset + rows.length, total).toLocaleString()} of {total.toLocaleString()} transactions
           </span>
           <div className="flex gap-2">
-            {page > 1 && (
+            {page > 1 ? (
               <Link
                 href={buildUrl(searchParams, { page: String(page - 1) })}
-                className="flex items-center gap-1 border border-[#E9E7E2] px-3 py-1.5 text-[#787774] hover:border-[#37352F] hover:text-[#37352F] transition-colors rounded-md"
+                className="p-1.5 rounded-full bg-white shadow-ambient hover:bg-surface-container-low transition-colors"
+                aria-label="Previous page"
               >
-                <ChevronLeft className="w-3.5 h-3.5" /> Previous
+                <ChevronLeft className="w-4 h-4 text-secondary" />
               </Link>
+            ) : (
+              <button
+                disabled
+                className="p-1.5 rounded-full hover:bg-surface-container-low transition-colors opacity-40 cursor-not-allowed"
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="w-4 h-4 text-secondary" />
+              </button>
             )}
-            {page < totalPages && (
+            {page < totalPages ? (
               <Link
                 href={buildUrl(searchParams, { page: String(page + 1) })}
-                className="flex items-center gap-1 border border-[#E9E7E2] px-3 py-1.5 text-[#787774] hover:border-[#37352F] hover:text-[#37352F] transition-colors rounded-md"
+                className="p-1.5 rounded-full bg-white shadow-ambient hover:bg-surface-container-low transition-colors"
+                aria-label="Next page"
               >
-                Next <ChevronRight className="w-3.5 h-3.5" />
+                <ChevronRight className="w-4 h-4 text-secondary" />
               </Link>
+            ) : (
+              <button
+                disabled
+                className="p-1.5 rounded-full hover:bg-surface-container-low transition-colors opacity-40 cursor-not-allowed"
+                aria-label="Next page"
+              >
+                <ChevronRight className="w-4 h-4 text-secondary" />
+              </button>
             )}
           </div>
         </div>
-      )}
-    </div>
+
+      </section>
+    </>
   )
 }

@@ -50,9 +50,9 @@ function CustomTooltip({
   const entry = payload?.[0]
   if (!active || !entry) return null
   return (
-    <div className="bg-white border border-[#E9E7E2] px-3 py-2 text-sm shadow-sm">
-      <p className="text-[#787774] text-xs">{label ? formatShortDate(label) : ''}</p>
-      <p className="text-[#37352F] font-medium tabular-nums mt-0.5">
+    <div className="bg-white border border-secondary-container px-3 py-2 text-sm shadow-sm rounded-xl">
+      <p className="text-secondary text-xs">{label ? formatShortDate(label) : ''}</p>
+      <p className="text-on-surface font-medium tabular-nums mt-0.5">
         {new Intl.NumberFormat('en-AU', {
           style:    'currency',
           currency: 'AUD',

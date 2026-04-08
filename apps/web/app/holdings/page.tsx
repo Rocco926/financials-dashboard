@@ -1,7 +1,6 @@
 import { db } from '@/lib/db'
 import { holdings, holdingPriceCache, holdingSnapshots } from '@/lib/db'
 import { asc, inArray, desc } from 'drizzle-orm'
-import { formatCurrency } from '@/lib/utils'
 import { HoldingsClient } from './holdings-client'
 
 async function getHoldings() {
@@ -94,62 +93,10 @@ export default async function HoldingsPage() {
     getSnapshots(),
   ])
 
-  const totalValue = holdingRows.reduce(
-    (sum, h) => sum + (h.currentValue ?? 0),
-    0,
-  )
-  const totalCostBase = holdingRows.reduce(
-    (sum, h) => sum + (h.costBase ?? 0),
-    0,
-  )
-  const totalGainLoss = totalValue - totalCostBase
-
   return (
-    <div className="px-10 py-8 space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-medium text-[#37352F] text-balance">Holdings</h1>
-          <p className="text-sm text-[#787774] mt-0.5 text-pretty">
-            Investment accounts and cash positions
-          </p>
-        </div>
-      </div>
-
-      {/* Summary metrics */}
-      {holdingRows.length > 0 && (
-        <div className="grid grid-cols-3 gap-0 border border-[#E9E7E2] divide-x divide-[#E9E7E2]">
-          <div className="px-6 py-4">
-            <p className="section-label text-[#787774]">Total value</p>
-            <p className="text-2xl font-medium text-[#37352F] tabular-nums mt-1">
-              {formatCurrency(totalValue)}
-            </p>
-          </div>
-          <div className="px-6 py-4">
-            <p className="section-label text-[#787774]">Cost base</p>
-            <p className="text-2xl font-medium text-[#37352F] tabular-nums mt-1">
-              {formatCurrency(totalCostBase)}
-            </p>
-          </div>
-          <div className="px-6 py-4">
-            <p className="section-label text-[#787774]">Unrealised G/L</p>
-            <p
-              className={`text-2xl font-medium tabular-nums mt-1 ${
-                totalGainLoss >= 0 ? 'text-[#4CAF7D]' : 'text-[#E5534B]'
-              }`}
-            >
-              {totalGainLoss >= 0 ? '+' : ''}
-              {formatCurrency(totalGainLoss)}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Client component handles table + chart + form */}
-      <HoldingsClient
-        initialHoldings={holdingRows}
-        initialSnapshots={snapshots}
-      />
-    </div>
+    <HoldingsClient
+      initialHoldings={holdingRows}
+      initialSnapshots={snapshots}
+    />
   )
 }

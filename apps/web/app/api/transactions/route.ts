@@ -48,7 +48,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { transactions, accounts } from '@/lib/db'
-import { and, eq, gte, lte, ilike, desc, count } from 'drizzle-orm'
+import { and, eq, gte, lte, ilike, desc, count, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 /**
@@ -146,4 +146,28 @@ export async function GET(request: NextRequest) {
       totalPages:  Math.ceil(Number(total) / limit),
     },
   })
+}
+
+/**
+ * DELETE /api/transactions?accountId=<uuid>
+ *
+ * Deletes ALL transactions for a given account.
+ * Requires accountId — will not delete across all accounts without one.
+ * Returns the count of deleted rows.
+ */
+export async function DELETE(request: NextRequest) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const accountId = request.nextUrl.searchParams.get('accountId')
+  if (!accountId) {
+    return NextResponse.json({ error: 'accountId is required' }, { status: 400 })
+  }
+
+  const deleted = await db
+    .delete(transactions)
+    .where(eq(transactions.accountId, accountId))
+    .returning({ id: transactions.id })
+
+  return NextResponse.json({ deleted: deleted.length })
 }

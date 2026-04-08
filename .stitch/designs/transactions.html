@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Transactions | The Tactile Editorial</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'wght' 300, 'opsz' 24;
+        }
+        /* Custom Ambient Shadow from Design System */
+        .ambient-shadow {
+            box-shadow: 0 12px 40px rgba(27, 28, 27, 0.04);
+        }
+        /* Glassmorphism for floating elements */
+        .glass-panel {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-container": "#67645d",
+                      "outline": "#6e7a71",
+                      "error-container": "#ffdad6",
+                      "on-primary-fixed-variant": "#005232",
+                      "surface-variant": "#e3e2e0",
+                      "on-surface": "#1b1c1b",
+                      "on-error-container": "#93000a",
+                      "inverse-on-surface": "#f2f1ee",
+                      "on-secondary-fixed-variant": "#494740",
+                      "surface-container-low": "#f4f3f1",
+                      "on-primary": "#ffffff",
+                      "error": "#ba1a1a",
+                      "secondary": "#615e57",
+                      "surface-container-high": "#e9e8e6",
+                      "tertiary-fixed-dim": "#ffb4ac",
+                      "primary-fixed-dim": "#77daa4",
+                      "on-tertiary-fixed-variant": "#8e1215",
+                      "surface": "#faf9f7",
+                      "tertiary-container": "#ff6f65",
+                      "primary-fixed": "#93f7bf",
+                      "primary-container": "#4caf7d",
+                      "on-tertiary-container": "#700008",
+                      "on-error": "#ffffff",
+                      "tertiary-fixed": "#ffdad6",
+                      "on-tertiary": "#ffffff",
+                      "on-secondary-fixed": "#1d1c16",
+                      "secondary-fixed-dim": "#cbc6bd",
+                      "secondary-container": "#e7e2d9",
+                      "on-primary-fixed": "#002112",
+                      "on-primary-container": "#003d25",
+                      "inverse-primary": "#77daa4",
+                      "surface-container-lowest": "#ffffff",
+                      "outline-variant": "#bdcabf",
+                      "surface-dim": "#dbdad8",
+                      "on-background": "#1b1c1b",
+                      "inverse-surface": "#2f3130",
+                      "tertiary": "#b02d29",
+                      "secondary-fixed": "#e7e2d9",
+                      "surface-container": "#efeeec",
+                      "surface-tint": "#006c44",
+                      "on-tertiary-fixed": "#410003",
+                      "on-surface-variant": "#3e4942",
+                      "on-secondary": "#ffffff",
+                      "surface-bright": "#faf9f7",
+                      "primary": "#006c44",
+                      "surface-container-highest": "#e3e2e0",
+                      "background": "#faf9f7"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "2xl": "1.5rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Inter"],
+                      "body": ["Inter"],
+                      "label": ["Inter"]
+              }
+            },
+          },
+        }
+      </script>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex">
+<!-- Fixed SideNavBar (Shared Component Logic) -->
+<aside class="w-[220px] h-screen fixed left-0 top-0 py-8 px-4 flex flex-col bg-surface-container-lowest ambient-shadow z-20">
+<div class="mb-12 px-2">
+<h1 class="text-xl font-bold text-on-surface tracking-tight">The Tactile Editorial</h1>
+<p class="text-xs text-secondary tracking-wide uppercase mt-1">Personal Curator</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-surface-container-high transition-colors duration-200 rounded-full group" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="dashboard">dashboard</span>
+<span class="font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-surface-container-high transition-colors duration-200 rounded-full group" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-medium">Holdings</span>
+</a>
+<a aria-current="page" class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-surface rounded-full font-semibold transition-all duration-200 shadow-sm" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="receipt_long">receipt_long</span>
+<span class="font-medium">Transactions</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-secondary hover:bg-surface-container-high transition-colors duration-200 rounded-full group" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="savings">savings</span>
+<span class="font-medium">Budgets</span>
+</a>
+</nav>
+<div class="mt-auto px-2">
+<div class="flex items-center gap-3 pt-6">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-container-high">
+<img alt="User avatar" class="w-full h-full object-cover" data-alt="Portrait of a professional man with a kind expression, soft studio lighting, high-end editorial style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTNiR5RpHLZwyWyl7Wbzg1QsSqe4Wqs6AYq7z7yhuCi7eTN9ljL3cDW_9MiQEcH8aJGXbGkYFk1RvCqTfK9kZoRF0lNDeDFXgqILeE1zC-1ye8dvPuA79oLCVeSwloGbWvAUPdRG_NwVr5weOALDbskN5TCDYfDwnqk6GGlVsfJDjGkaOZDf63iXoE_mhHdge-xbGu1K6knUJ-F7W8sKI6S-Kt5lAWO1hyF7lnaYaIvKKklajkrRSGYfbWdrT9yBZKd8ea30C5abE"/>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-on-surface">James D.</span>
+<span class="text-[10px] text-secondary">Premium Tier</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 ml-[220px] p-10 bg-surface min-h-screen">
+<!-- TopAppBar (Mapped from JSON logic) -->
+<header class="flex justify-between items-center h-20 mb-8">
+<h2 class="text-3xl font-extrabold tracking-tight text-on-surface">Transactions</h2>
+<div class="flex items-center gap-6">
+<a class="text-primary font-bold hover:opacity-80 transition-opacity" href="#">Categorise →</a>
+<button class="px-6 py-2.5 bg-surface-container-lowest text-on-surface-variant font-medium rounded-full ambient-shadow hover:bg-surface-container-low transition-all">
+                    Clear account
+                </button>
+</div>
+</header>
+<!-- Filter Bar -->
+<section class="mb-8">
+<div class="bg-surface-container-lowest rounded-2xl ambient-shadow px-6 py-4 flex flex-wrap lg:flex-nowrap items-center gap-4">
+<div class="relative flex-1 min-w-[240px]">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg" data-icon="search">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-xl pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-secondary/60" placeholder="Search transactions..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<select class="bg-surface-container-low border-none rounded-xl px-4 py-2 text-sm text-on-surface-variant focus:ring-2 focus:ring-primary/20 appearance-none min-w-[140px]">
+<option>All Accounts</option>
+<option>Everyday Access</option>
+<option>Savings Plus</option>
+</select>
+<select class="bg-surface-container-low border-none rounded-xl px-4 py-2 text-sm text-on-surface-variant focus:ring-2 focus:ring-primary/20 appearance-none min-w-[160px]">
+<option>All Categories</option>
+<option>Uncategorised only</option>
+<option>Groceries</option>
+<option>Subscriptions</option>
+<option>Income</option>
+</select>
+<div class="flex items-center gap-2 bg-surface-container-low rounded-xl px-3 py-2">
+<span class="text-[10px] text-secondary uppercase font-bold tracking-wider">From</span>
+<input class="bg-transparent border-none p-0 text-sm w-14 focus:ring-0" type="text" value="Jan 01"/>
+<span class="text-outline/40">|</span>
+<span class="text-[10px] text-secondary uppercase font-bold tracking-wider">To</span>
+<input class="bg-transparent border-none p-0 text-sm w-14 focus:ring-0" type="text" value="Jan 31"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Transactions Table (Editorial Style) -->
+<section class="bg-surface-container-lowest rounded-2xl ambient-shadow overflow-hidden">
+<!-- Table Header -->
+<div class="bg-surface-container-low grid grid-cols-[100px_1fr_150px_150px_120px_60px] px-8 py-4 text-[11px] font-extrabold uppercase tracking-widest text-secondary/70">
+<div>Date</div>
+<div>Description</div>
+<div>Account</div>
+<div>Category</div>
+<div class="text-right">Amount</div>
+<div class="text-center"></div>
+</div>
+<!-- Table Rows -->
+<div class="divide-y divide-transparent">
+<!-- Row 1 -->
+<div class="grid grid-cols-[100px_1fr_150px_150px_120px_60px] items-center px-8 py-5 hover:bg-surface-container-low/40 transition-all duration-200 group">
+<div class="text-sm text-secondary font-medium">Jan 25</div>
+<div class="text-sm font-semibold text-on-surface">Woolworths Melbourne</div>
+<div class="text-xs text-secondary">Everyday Access</div>
+<div>
+<span class="px-3 py-1 bg-secondary-container rounded-full text-[10px] font-bold text-on-secondary-container">Groceries</span>
+</div>
+<div class="text-sm font-bold text-on-surface text-right">-$142.30</div>
+<div class="flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<!-- Row 2 (Credit) -->
+<div class="grid grid-cols-[100px_1fr_150px_150px_120px_60px] items-center px-8 py-5 hover:bg-surface-container-low/40 transition-all duration-200 group">
+<div class="text-sm text-secondary font-medium">Jan 25</div>
+<div class="text-sm font-semibold text-on-surface">Employer Salary Payment</div>
+<div class="text-xs text-secondary">Savings Plus</div>
+<div>
+<span class="px-3 py-1 bg-secondary-container rounded-full text-[10px] font-bold text-on-secondary-container">Income</span>
+</div>
+<div class="text-sm font-bold text-primary text-right">+$4,225.00</div>
+<div class="flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<!-- Row 3 -->
+<div class="grid grid-cols-[100px_1fr_150px_150px_120px_60px] items-center px-8 py-5 hover:bg-surface-container-low/40 transition-all duration-200 group">
+<div class="text-sm text-secondary font-medium">Jan 24</div>
+<div class="text-sm font-semibold text-on-surface">Coles Express South</div>
+<div class="text-xs text-secondary">Everyday Access</div>
+<div>
+<span class="px-3 py-1 bg-secondary-container rounded-full text-[10px] font-bold text-on-secondary-container">Transport</span>
+</div>
+<div class="text-sm font-bold text-on-surface text-right">-$85.00</div>
+<div class="flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<!-- Row 4 -->
+<div class="grid grid-cols-[100px_1fr_150px_150px_120px_60px] items-center px-8 py-5 hover:bg-surface-container-low/40 transition-all duration-200 group">
+<div class="text-sm text-secondary font-medium">Jan 23</div>
+<div class="text-sm font-semibold text-on-surface">Netflix Australia</div>
+<div class="text-xs text-secondary">Everyday Access</div>
+<div>
+<span class="px-3 py-1 bg-secondary-container rounded-full text-[10px] font-bold text-on-secondary-container">Entertainment</span>
+</div>
+<div class="text-sm font-bold text-on-surface text-right">-$22.99</div>
+<div class="flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<!-- Row 5 -->
+<div class="grid grid-cols-[100px_1fr_150px_150px_120px_60px] items-center px-8 py-5 hover:bg-surface-container-low/40 transition-all duration-200 group">
+<div class="text-sm text-secondary font-medium">Jan 22</div>
+<div class="text-sm font-semibold text-on-surface">Shell Service Station</div>
+<div class="text-xs text-secondary">Everyday Access</div>
+<div>
+<span class="px-3 py-1 bg-secondary-container rounded-full text-[10px] font-bold text-on-secondary-container">Transport</span>
+</div>
+<div class="text-sm font-bold text-on-surface text-right">-$110.40</div>
+<div class="flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<!-- Row 6 -->
+<div class="grid grid-cols-[100px_1fr_150px_150px_120px_60px] items-center px-8 py-5 hover:bg-surface-container-low/40 transition-all duration-200 group">
+<div class="text-sm text-secondary font-medium">Jan 20</div>
+<div class="text-sm font-semibold text-on-surface">Bunnings Warehouse</div>
+<div class="text-xs text-secondary">Everyday Access</div>
+<div>
+<span class="px-3 py-1 bg-secondary-container rounded-full text-[10px] font-bold text-on-secondary-container">Home</span>
+</div>
+<div class="text-sm font-bold text-on-surface text-right">-$342.15</div>
+<div class="flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<!-- Row 7 -->
+<div class="grid grid-cols-[100px_1fr_150px_150px_120px_60px] items-center px-8 py-5 hover:bg-surface-container-low/40 transition-all duration-200 group">
+<div class="text-sm text-secondary font-medium">Jan 19</div>
+<div class="text-sm font-semibold text-on-surface">Uber Eats</div>
+<div class="text-xs text-secondary">Everyday Access</div>
+<div>
+<span class="px-3 py-1 bg-secondary-container rounded-full text-[10px] font-bold text-on-secondary-container">Dining</span>
+</div>
+<div class="text-sm font-bold text-on-surface text-right">-$34.50</div>
+<div class="flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<!-- Row 8 (Credit) -->
+<div class="grid grid-cols-[100px_1fr_150px_150px_120px_60px] items-center px-8 py-5 hover:bg-surface-container-low/40 transition-all duration-200 group">
+<div class="text-sm text-secondary font-medium">Jan 18</div>
+<div class="text-sm font-semibold text-on-surface">Bank Interest Earned</div>
+<div class="text-xs text-secondary">Savings Plus</div>
+<div>
+<span class="px-3 py-1 bg-secondary-container rounded-full text-[10px] font-bold text-on-secondary-container">Income</span>
+</div>
+<div class="text-sm font-bold text-primary text-right">+$12.40</div>
+<div class="flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<!-- Row 9 -->
+<div class="grid grid-cols-[100px_1fr_150px_150px_120px_60px] items-center px-8 py-5 hover:bg-surface-container-low/40 transition-all duration-200 group">
+<div class="text-sm text-secondary font-medium">Jan 17</div>
+<div class="text-sm font-semibold text-on-surface">JB Hi-Fi</div>
+<div class="text-xs text-secondary">Everyday Access</div>
+<div>
+<span class="px-3 py-1 bg-secondary-container rounded-full text-[10px] font-bold text-on-secondary-container">Shopping</span>
+</div>
+<div class="text-sm font-bold text-on-surface text-right">-$299.00</div>
+<div class="flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<!-- Row 10 (Credit) -->
+<div class="grid grid-cols-[100px_1fr_150px_150px_120px_60px] items-center px-8 py-5 hover:bg-surface-container-low/40 transition-all duration-200 group">
+<div class="text-sm text-secondary font-medium">Jan 15</div>
+<div class="text-sm font-semibold text-on-surface">Medicare Refund</div>
+<div class="text-xs text-secondary">Everyday Access</div>
+<div>
+<span class="px-3 py-1 bg-secondary-container rounded-full text-[10px] font-bold text-on-secondary-container">Health</span>
+</div>
+<div class="text-sm font-bold text-primary text-right">+$38.50</div>
+<div class="flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Table Footer / Pagination Suggestion -->
+<div class="bg-surface-container-low/50 px-8 py-4 flex justify-between items-center">
+<span class="text-xs text-secondary">Showing 10 of 254 transactions</span>
+<div class="flex gap-2">
+<button class="p-1.5 rounded-full hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="p-1.5 rounded-full bg-surface-container-lowest ambient-shadow transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Background texture simulation -->
+<div class="fixed inset-0 pointer-events-none opacity-[0.03] z-[-1]" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAmOiDzwAbXRJur4k82PHBAzQK52Xv46fbdFvXbrOPDlYH8QdRlIACdlWusbPWCUgunC7aTOkMMESQ2Ez2XW83eQsRHOWnS24bscyObRqrfp7FDAMyXn-1B8qDT2mLKx3j5gcvD8sh2LfvqDxydsPIanI8UE1djGzTC2KREpyFeOfC65LtzlCuLAnvFvoovzdPC09I_IKAK4cuXBezI8OzE2nhtGhs3kxna2Xy-7rUC8e25CjuB353O4Ubuoh5dM1yhmze6BBMOH7E');"></div>
+</body></html>

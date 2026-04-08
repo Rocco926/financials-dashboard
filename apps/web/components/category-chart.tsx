@@ -1,92 +1,94 @@
-/**
- * CategoryChart — spending breakdown donut chart for the dashboard.
- *
- * WHAT IT RENDERS
- * ────────────────
- * A donut (hollow pie) chart where each slice represents one spending category.
- * The slice size is proportional to the total amount spent in that category
- * during the selected period.
- *
- * Only expense transactions (negative amounts) are included — income is excluded.
- * The slice colour matches each category's stored `colour` hex value from the database.
- *
- * DATA SOURCE
- * ────────────
- * Data is computed by a Drizzle query in app/page.tsx (the dashboard Server Component)
- * and passed as a prop. This component is purely presentational — it doesn't fetch.
- *
- * UNCATEGORISED TRANSACTIONS
- * ──────────────────────────
- * Transactions with no category assigned are grouped as "Uncategorised"
- * with a default grey colour (#6b7280). This is handled in the SQL query
- * in app/page.tsx using COALESCE(category, 'Uncategorised').
- *
- * CLIENT COMPONENT
- * ─────────────────
- * Recharts requires browser APIs, so this must be 'use client'.
- * Data is fetched server-side in the parent and passed as serialisable props.
- */
 'use client'
 
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { formatCurrency } from '@/lib/utils'
 
-/** One slice of the donut chart = one category's spending total. */
 interface CategoryDataPoint {
-  /** Category name (e.g. "Groceries") or "Uncategorised" */
   name: string
-  /** Total absolute amount spent in this category for the period (always positive) */
   value: number
-  /** Hex colour for the pie slice, from the categories.colour column */
   colour: string
 }
 
-/**
- * Renders the category spending donut chart.
- *
- * @param data - Array of category aggregates for the selected period.
- *               An empty array renders a "No spending data yet" placeholder.
- */
 export function CategoryChart({ data }: { data: CategoryDataPoint[] }) {
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-sm text-gray-400">
+      <div className="flex items-center justify-center h-56 text-sm text-secondary">
         No spending data yet
       </div>
     )
   }
 
+  const total = data.reduce((s, d) => s + d.value, 0)
+
+  // Up to 8 items in the legend
+  const legendItems = data.slice(0, 8)
+
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <PieChart>
-        <Pie
-          data={data}
-          cx="50%"
-          cy="45%"
-          innerRadius={60}   // The "hole" in the donut — 0 would make it a solid pie
-          outerRadius={95}
-          paddingAngle={2}   // Small gap between slices for visual separation
-          dataKey="value"
-        >
-          {/* Each Cell gets its colour from the category's colour field */}
-          {data.map((entry, i) => (
-            <Cell key={i} fill={entry.colour} />
-          ))}
-        </Pie>
+    <div>
+      {/* Donut chart with center overlay */}
+      <div className="relative">
+        <ResponsiveContainer width="100%" height={220}>
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={72}
+              outerRadius={100}
+              paddingAngle={2}
+              dataKey="value"
+              startAngle={90}
+              endAngle={-270}
+            >
+              {data.map((entry, i) => (
+                <Cell key={i} fill={entry.colour} strokeWidth={0} />
+              ))}
+            </Pie>
 
-        {/* Tooltip: shows category name + formatted amount on hover */}
-        <Tooltip
-          formatter={(v: number) => formatCurrency(Math.abs(v))}
-          contentStyle={{ fontSize: 13, borderRadius: 8, border: '1px solid #e5e7eb' }}
-        />
+            <Tooltip
+              formatter={(v: number) => [formatCurrency(v), '']}
+              contentStyle={{
+                fontSize: 12,
+                borderRadius: 12,
+                border: '1px solid #e7e2d9',
+                boxShadow: '0 4px 16px rgba(27,28,27,0.06)',
+                color: '#1b1c1b',
+              }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
 
-        {/* Legend: colour swatch + category name, shown below the chart */}
-        <Legend
-          wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
-          iconType="square"
-          iconSize={10}
-        />
-      </PieChart>
-    </ResponsiveContainer>
+        {/* Center label — absolutely positioned over the donut hole */}
+        {total > 0 && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
+            <span className="text-xl font-bold text-on-surface tabular-nums tracking-tight">
+              {formatCurrency(total)}
+            </span>
+            <span className="text-[9px] font-bold text-secondary uppercase tracking-[0.12em] mt-0.5">
+              Total spent
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* 2-col legend grid */}
+      <div className="grid grid-cols-2 gap-x-8 gap-y-2.5 mt-4 px-2">
+        {legendItems.map((item) => {
+          const pct = total > 0 ? Math.round((item.value / total) * 100) : 0
+          return (
+            <div key={item.name} className="flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className="size-2 rounded-full shrink-0"
+                  style={{ backgroundColor: item.colour }}
+                />
+                <span className="text-xs text-on-surface font-medium truncate">{item.name}</span>
+              </div>
+              <span className="text-xs text-secondary tabular-nums ml-2 shrink-0">{pct}%</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }

@@ -79,7 +79,7 @@ import type { ParsedTransaction, ParseResult } from '@finance/types'
 type CsvRow = Record<string, string>
 
 /** Which bank's CSV format was detected from the headers. */
-type CsvVariant = 'westpac' | 'westpac2' | 'nab' | 'nab2' | 'unknown'
+type CsvVariant = 'westpac' | 'westpac2' | 'nab' | 'nab2' | 'macquarie' | 'unknown'
 
 /**
  * Sniffs the CSV headers to determine which bank this file came from.
@@ -107,6 +107,10 @@ function detectVariant(headers: string[]): CsvVariant {
   // NAB newer export: "Transaction Details" + "Amount" (no Narrative column)
   if (set.has('transaction details') && set.has('amount')) return 'nab2'
 
+  // Macquarie: "Transaction Date" + "Details" (split Debit/Credit like Westpac,
+  // but "Details" distinguishes it from Westpac classic's "Narration")
+  if (set.has('transaction date') && set.has('details') && set.has('debit')) return 'macquarie'
+
   return 'unknown'
 }
 
@@ -128,8 +132,15 @@ function parseAuDate(raw: string): Date {
   const s = raw.trim()
 
   // Primary: DD/MM/YYYY (Australian standard, used by Westpac and NAB classic)
+  // NOTE: date-fns silently accepts 2-digit years with yyyy (e.g. "04/04/26" → year 26 AD).
+  // We only accept the result when the year is >= 100, i.e. a real 4-digit year.
   const slashFull = parseDate(s, 'dd/MM/yyyy', new Date())
-  if (!isNaN(slashFull.getTime())) return slashFull
+  if (!isNaN(slashFull.getTime()) && slashFull.getFullYear() >= 100) return slashFull
+
+  // DD/MM/YY — some bank exports use a 2-digit year (e.g. NAB credit card: "04/04/26")
+  // date-fns 'yy' applies century adjustment so '26' → 2026, '99' → 2099.
+  const slashShort = parseDate(s, 'dd/MM/yy', new Date())
+  if (!isNaN(slashShort.getTime())) return slashShort
 
   // NAB newer export: "DD Mon YY" e.g. "03 Apr 26"
   // date-fns 'yy' interprets two-digit years relative to the current century,
@@ -369,6 +380,73 @@ function parseNab2Row(
 }
 
 /**
+ * Parses a single row from a Macquarie Bank CSV export.
+ *
+ * Macquarie uses separate Debit and Credit columns (both positive, like Westpac),
+ * but calls the description column "Details" and provides "Original Description"
+ * as the raw bank-side merchant string. It also exports a "Category" column
+ * which we surface as a suggestedCategory hint for auto-categorisation.
+ *
+ * Headers: Transaction Date, Details, Account, Category, Subcategory,
+ *          Tags, Notes, Debit, Credit, Balance, Original Description
+ *
+ * @param row      - A single CSV row as a key→value object
+ * @param position - 1-based row number (for error messages and hash generation)
+ */
+function parseMacquarieRow(
+  row: CsvRow,
+  position: number,
+): ParsedTransaction | string {
+  try {
+    const dateStr     = (row['Transaction Date'] ?? '').trim()
+    const debitStr    = (row['Debit'] ?? '').trim()
+    const creditStr   = (row['Credit'] ?? '').trim()
+    const description = (row['Details'] ?? '').trim()
+    const balanceStr  = (row['Balance'] ?? '').trim()
+
+    if (!dateStr)     return `Row ${position}: missing Transaction Date`
+    if (!description) return `Row ${position}: missing Details`
+
+    const date = parseAuDate(dateStr)
+
+    // Macquarie uses the same split Debit/Credit pattern as Westpac:
+    // Credit populated → money in (positive), Debit populated → money out (negative).
+    let amount: number
+    if (creditStr !== '') {
+      amount = Math.abs(parseFloat(creditStr))
+    } else if (debitStr !== '') {
+      amount = -Math.abs(parseFloat(debitStr))
+    } else {
+      return `Row ${position}: both Debit and Credit are empty`
+    }
+
+    if (isNaN(amount)) return `Row ${position}: invalid amount`
+
+    const balance = balanceStr !== '' ? parseFloat(balanceStr) : undefined
+
+    // "Original Description" is the raw bank-provided text (more stable for
+    // deduplication/display). "Details" is the user-facing cleaned label.
+    const originalDesc      = (row['Original Description'] ?? '').trim()
+    const suggestedCategory = (row['Category'] ?? '').trim() || undefined
+
+    return {
+      externalId: generateExternalId(date, amount, description, position),
+      date,
+      amount,
+      description,
+      balance,
+      type:    amount >= 0 ? 'credit' : 'debit',
+      // Use Original Description as merchantName when it differs from Details
+      merchantName:      originalDesc && originalDesc !== description ? originalDesc : undefined,
+      suggestedCategory,
+      rawData: row as Record<string, unknown>,
+    }
+  } catch (err) {
+    return `Row ${position}: ${err instanceof Error ? err.message : String(err)}`
+  }
+}
+
+/**
  * Main entry point for CSV parsing.
  *
  * Delegates to Papa.parse for tokenisation, then routes each row through
@@ -401,7 +479,8 @@ export function parseCsv(content: string): ParseResult {
         `Expected Westpac classic (Transaction Date, Narration, Debit, Credit), ` +
         `Westpac export (Date, Narrative, Debit Amount, Credit Amount), ` +
         `NAB classic (Date, Amount, Narrative), ` +
-        `or NAB export (Date, Amount, Transaction Details).`,
+        `NAB export (Date, Amount, Transaction Details), ` +
+        `or Macquarie (Transaction Date, Details, Debit, Credit).`,
     )
     return { transactions, currency: 'AUD', format: 'csv', parseErrors }
   }
@@ -413,10 +492,11 @@ export function parseCsv(content: string): ParseResult {
     if (!row) continue
 
     const result =
-      variant === 'westpac'  ? parseWestpacRow(row, i + 1) :
-      variant === 'westpac2' ? parseWestpac2Row(row, i + 1) :
-      variant === 'nab2'     ? parseNab2Row(row, i + 1) :
-                               parseNabRow(row, i + 1)
+      variant === 'westpac'   ? parseWestpacRow(row, i + 1) :
+      variant === 'westpac2'  ? parseWestpac2Row(row, i + 1) :
+      variant === 'nab2'      ? parseNab2Row(row, i + 1) :
+      variant === 'macquarie' ? parseMacquarieRow(row, i + 1) :
+                                parseNabRow(row, i + 1)
 
     // String return = a non-fatal error for this row
     if (typeof result === 'string') {

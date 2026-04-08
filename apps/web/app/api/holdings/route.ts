@@ -4,8 +4,9 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { db, holdings, holdingPriceCache } from '@/lib/db'
-import { asc, inArray } from 'drizzle-orm'
+import { db, holdings, holdingPriceCache, transactions } from '@/lib/db'
+import { asc, desc, eq, inArray } from 'drizzle-orm'
+import { getLiveBalances } from '@/lib/get-live-balances'
 import { z } from 'zod'
 
 // ─── Validation ───────────────────────────────────────────────────────────────
@@ -56,6 +57,13 @@ export async function GET() {
     }
   }
 
+  // For linked holdings, fetch the latest transaction balance per account.
+  const linkedAccountIds = rows
+    .map((h) => h.linkedAccountId)
+    .filter((id): id is string => id != null)
+
+  const liveBalanceMap = await getLiveBalances(linkedAccountIds)
+
   // Compute current value for each holding
   const data = rows.map((h) => {
     const cached = h.ticker ? priceMap[h.ticker] : null
@@ -66,11 +74,14 @@ export async function GET() {
     // Current value:
     //   ETF/stock with units + live price → units × price
     //   ETF/stock with units but no live price → units × avgCost (fallback)
-    //   Cash/other → manualBalance
+    //   Cash linked to account → live balance from transactions (always fresh)
+    //   Cash/other unlinked → manualBalance
     let currentValue: number | null = null
     if ((h.type === 'etf' || h.type === 'stock') && units != null) {
       const price = cached?.price ?? avgCost
       currentValue = price != null ? units * price : null
+    } else if (h.linkedAccountId && liveBalanceMap[h.linkedAccountId] != null) {
+      currentValue = liveBalanceMap[h.linkedAccountId] ?? null
     } else {
       currentValue = manualBalance
     }
@@ -116,6 +127,19 @@ export async function POST(request: NextRequest) {
     avgCostPerUnit, manualBalance, currency, notes, sortOrder, linkedAccountId,
   } = parsed.data
 
+  // If linked to an account, backfill manualBalance from the most recent
+  // transaction balance right now — don't wait for the next import.
+  let resolvedBalance = manualBalance != null ? String(manualBalance) : null
+  if (linkedAccountId) {
+    const [latest] = await db
+      .select({ balance: transactions.balance })
+      .from(transactions)
+      .where(eq(transactions.accountId, linkedAccountId))
+      .orderBy(desc(transactions.date), desc(transactions.createdAt))
+      .limit(1)
+    if (latest?.balance != null) resolvedBalance = String(latest.balance)
+  }
+
   const [row] = await db
     .insert(holdings)
     .values({
@@ -125,7 +149,7 @@ export async function POST(request: NextRequest) {
       ticker:          ticker ?? null,
       units:           units != null ? String(units) : null,
       avgCostPerUnit:  avgCostPerUnit != null ? String(avgCostPerUnit) : null,
-      manualBalance:   manualBalance != null ? String(manualBalance) : null,
+      manualBalance:   resolvedBalance,
       currency,
       notes:           notes ?? null,
       sortOrder,

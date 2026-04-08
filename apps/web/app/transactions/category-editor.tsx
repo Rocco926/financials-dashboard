@@ -1,115 +1,140 @@
-/**
- * CategoryEditor — inline category selector for the transactions table.
- *
- * WHAT IT RENDERS
- * ────────────────
- * A <select> dropdown that appears inline in the category column of the
- * transactions table. The selected value is displayed directly in the cell.
- * Changing the selection immediately sends a PATCH request to update the
- * transaction's category in the database.
- *
- * USER EXPERIENCE
- * ────────────────
- * 1. User clicks on a category cell → the <select> opens (native browser dropdown)
- * 2. User picks a category
- * 3. The component immediately calls PATCH /api/transactions/[id]
- * 4. While the PATCH is in-flight, the select is disabled (prevents double-updates)
- * 5. On success, router.refresh() is called inside useTransition to re-render
- *    the Server Component with fresh data — the table updates without a full reload.
- *
- * OPTIMISTIC UPDATE NOTE
- * ───────────────────────
- * We use local state (useState) to immediately reflect the selected value in the
- * dropdown BEFORE the server responds. This makes the UI feel instant even if
- * the network round-trip takes 200-500ms.
- *
- * USETRANSITION
- * ─────────────
- * router.refresh() triggers a Server Component re-render. Wrapping it in
- * startTransition() marks it as a non-urgent update — React continues rendering
- * the current UI while the refresh happens in the background. This prevents
- * the table from going blank while data reloads.
- *
- * CLIENT COMPONENT
- * ─────────────────
- * Must be 'use client' because it uses useState, useTransition, useRouter,
- * and calls fetch() on user interaction.
- */
 'use client'
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Props {
-  /** UUID of the transaction being edited */
   transactionId: string
-  /** Current category name, or null if uncategorised */
   currentCategory: string | null
-  /** All available categories from the database (for the dropdown options) */
   categories: { name: string; colour: string }[]
+  /** Raw bank description — used to find similar uncategorised transactions. */
+  description: string
 }
 
-/**
- * Inline category dropdown for a single transaction row.
- *
- * Renders as a minimal, borderless select that gains a border on hover/focus.
- * This keeps the table visually clean until the user interacts with a cell.
- */
-export function CategoryEditor({ transactionId, currentCategory, categories }: Props) {
-  // Local state mirrors the current selection for immediate UI feedback
+export function CategoryEditor({ transactionId, currentCategory, categories, description }: Props) {
   const [value, setValue] = useState(currentCategory ?? '')
-
-  // `saving` controls the disabled state during the PATCH request
   const [saving, setSaving] = useState(false)
-
-  // useTransition allows router.refresh() to happen without blocking the UI
+  const [saveError, setSaveError] = useState(false)
   const [isPending, startTransition] = useTransition()
+
+  // "Apply to all similar" prompt state
+  const [showPrompt, setShowPrompt]       = useState(false)
+  const [similarCount, setSimilarCount]   = useState(0)
+  const [appliedCategory, setAppliedCategory] = useState<string | null>(null)
+  const [applying, setApplying]           = useState(false)
 
   const router = useRouter()
 
-  /**
-   * Handles the <select> onChange event.
-   * 1. Updates local state immediately (optimistic)
-   * 2. Sends PATCH to update the DB
-   * 3. On success, triggers a server-side refresh
-   */
   async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const next = e.target.value
-    setValue(next)     // Immediately update the displayed value
+    const prev = value
+    setValue(next)
     setSaving(true)
+    setSaveError(false)
+    setShowPrompt(false)
 
-    await fetch(`/api/transactions/${transactionId}`, {
+    const res = await fetch(`/api/transactions/${transactionId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      // Send null when the user selects "Uncategorised" (empty string option)
       body: JSON.stringify({ category: next || null }),
     })
 
+    if (!res.ok) {
+      setValue(prev)   // revert optimistic update
+      setSaveError(true)
+      setSaving(false)
+      return
+    }
+
     setSaving(false)
 
-    // Refresh the Server Component to re-render the table with fresh data.
-    // startTransition prevents the UI from showing a loading state.
+    // After saving, check whether there are other uncategorised transactions
+    // with the same description. The PATCH above already wrote the category_rule
+    // and updated this transaction — so the count query only returns others.
+    if (next) {
+      const pattern = description.toUpperCase().trim()
+      try {
+        const res = await fetch(
+          `/api/transactions/bulk-categorise?pattern=${encodeURIComponent(pattern)}`,
+        )
+        const json = await res.json() as { count: number }
+        if (json.count > 0) {
+          setSimilarCount(json.count)
+          setAppliedCategory(next)
+          setShowPrompt(true)
+        }
+      } catch {
+        // Non-critical — if the count check fails, skip the prompt silently.
+      }
+    }
+
+    startTransition(() => {
+      router.refresh()
+    })
+  }
+
+  async function handleApplyAll() {
+    if (!appliedCategory) return
+    setApplying(true)
+    const pattern = description.toUpperCase().trim()
+    await fetch('/api/transactions/bulk-categorise', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pattern, category: appliedCategory }),
+    })
+    setApplying(false)
+    setShowPrompt(false)
     startTransition(() => {
       router.refresh()
     })
   }
 
   return (
-    <select
-      value={value}
-      onChange={handleChange}
-      disabled={saving || isPending}
-      className="text-xs border border-transparent hover:border-gray-200 rounded px-2 py-1 bg-transparent focus:outline-none focus:border-gray-300 cursor-pointer disabled:opacity-50 max-w-[160px]"
-    >
-      {/* Empty value = uncategorised */}
-      <option value="">Uncategorised</option>
+    <div>
+      <select
+        value={value}
+        onChange={handleChange}
+        disabled={saving || isPending}
+        title={saveError ? 'Save failed — please try again' : undefined}
+        className={`text-xs border rounded-lg px-2 py-1 bg-transparent focus:outline-none focus:border-[#C5C2BC] cursor-pointer disabled:opacity-50 max-w-[160px] ${
+          saveError
+            ? 'border-tertiary text-tertiary'
+            : 'border-transparent hover:border-secondary-container'
+        }`}
+      >
+        <option value="">Uncategorised</option>
+        {categories.map((c) => (
+          <option key={c.name} value={c.name}>
+            {c.name}
+          </option>
+        ))}
+      </select>
 
-      {/* One option per category from the database */}
-      {categories.map((c) => (
-        <option key={c.name} value={c.name}>
-          {c.name}
-        </option>
-      ))}
-    </select>
+      {showPrompt && (
+        <div className="mt-1.5 flex items-center gap-2 flex-wrap text-xs bg-surface-container-low border border-secondary-container rounded-xl px-3 py-2 max-w-[340px]">
+          <span className="text-secondary">
+            Apply{' '}
+            <span className="font-medium text-on-surface">{appliedCategory}</span>
+            {' '}to {similarCount} other uncategorised{' '}
+            {similarCount === 1 ? 'transaction' : 'transactions'}?
+          </span>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={handleApplyAll}
+              disabled={applying}
+              className="text-on-surface font-medium hover:underline disabled:opacity-50"
+            >
+              {applying ? 'Applying…' : 'Apply all'}
+            </button>
+            <button
+              onClick={() => setShowPrompt(false)}
+              className="text-secondary hover:text-secondary"
+            >
+              Skip
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

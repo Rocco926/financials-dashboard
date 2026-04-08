@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Bulk Categorise Merchants | The Ledger</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#e7e2d9",
+                        "secondary-fixed-dim": "#cbc6bd",
+                        "on-primary-container": "#003d25",
+                        "tertiary": "#b02d29",
+                        "on-primary-fixed": "#002112",
+                        "tertiary-container": "#ff6f65",
+                        "inverse-surface": "#2f3130",
+                        "surface-bright": "#faf9f7",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#8e1215",
+                        "on-surface": "#1b1c1b",
+                        "inverse-on-surface": "#f2f1ee",
+                        "primary": "#006c44",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed-variant": "#494740",
+                        "error-container": "#ffdad6",
+                        "on-background": "#1b1c1b",
+                        "on-error": "#ffffff",
+                        "outline": "#6e7a71",
+                        "tertiary-fixed-dim": "#ffb4ac",
+                        "primary-fixed-dim": "#77daa4",
+                        "on-primary-fixed-variant": "#005232",
+                        "error": "#ba1a1a",
+                        "surface-container": "#efeeec",
+                        "primary-fixed": "#93f7bf",
+                        "primary-container": "#4caf7d",
+                        "on-secondary-fixed": "#1d1c16",
+                        "on-tertiary-container": "#700008",
+                        "surface-variant": "#e3e2e0",
+                        "secondary": "#615e57",
+                        "surface-container-low": "#f4f3f1",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-high": "#e9e8e6",
+                        "on-surface-variant": "#3e4942",
+                        "secondary-container": "#e7e2d9",
+                        "surface-container-highest": "#e3e2e0",
+                        "surface-dim": "#dbdad8",
+                        "on-tertiary-fixed": "#410003",
+                        "surface": "#faf9f7",
+                        "tertiary-fixed": "#ffdad6",
+                        "outline-variant": "#bdcabf",
+                        "on-secondary": "#ffffff",
+                        "surface-tint": "#006c44",
+                        "on-secondary-container": "#67645d",
+                        "inverse-primary": "#77daa4",
+                        "background": "#faf9f7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #EDECEA;
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="text-on-surface antialiased">
+<!-- SideNavBar Anchor -->
+<nav class="h-screen w-[220px] fixed left-0 top-0 flex flex-col p-6 bg-surface-container-lowest shadow-[0_12px_40px_rgba(27,28,27,0.04)] z-50">
+<div class="mb-10">
+<span class="text-xl font-bold tracking-tighter text-primary">The Ledger</span>
+<p class="text-[10px] uppercase tracking-[0.2em] text-secondary font-semibold mt-1">Financial Curator</p>
+</div>
+<div class="space-y-1 flex-grow">
+<!-- Dashboard -->
+<a class="flex items-center gap-3 px-4 py-2.5 text-secondary hover:text-on-surface transition-colors duration-200 group" href="#">
+<span class="material-symbols-outlined text-xl">dashboard</span>
+<span class="text-sm font-medium tracking-tight">Dashboard</span>
+</a>
+<!-- Holdings -->
+<a class="flex items-center gap-3 px-4 py-2.5 text-secondary hover:text-on-surface transition-colors duration-200 group" href="#">
+<span class="material-symbols-outlined text-xl">account_balance_wallet</span>
+<span class="text-sm font-medium tracking-tight">Holdings</span>
+</a>
+<!-- Transactions (ACTIVE) -->
+<a class="flex items-center gap-3 px-4 py-2.5 bg-surface-container-high text-primary rounded-full font-semibold transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-xl">receipt_long</span>
+<span class="text-sm tracking-tight">Transactions</span>
+</a>
+<!-- Budgets -->
+<a class="flex items-center gap-3 px-4 py-2.5 text-secondary hover:text-on-surface transition-colors duration-200 group" href="#">
+<span class="material-symbols-outlined text-xl">savings</span>
+<span class="text-sm font-medium tracking-tight">Budgets</span>
+</a>
+</div>
+<div class="pt-6 mt-6 border-t border-surface-container space-y-1">
+<a class="flex items-center gap-3 px-4 py-2.5 text-secondary hover:text-on-surface transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-xl">settings</span>
+<span class="text-sm font-medium tracking-tight">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 text-secondary hover:text-on-surface transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-xl">contact_support</span>
+<span class="text-sm font-medium tracking-tight">Support</span>
+</a>
+<div class="mt-6 flex items-center gap-3 px-2">
+<img class="w-8 h-8 rounded-full object-cover" data-alt="Close-up portrait of a professional man in a minimalist studio setting with warm natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXQSEk8IxDQVcHlZgMLSM2CzBpVxzStdoQf12fFaKAN_2KOd-yr5IMp6WxWFieFGy4f2z5lO_DAytxzlH2zg2wMr_FttBkSbaO54-3xuJW26W8gd_oORNrlN9N59g3wUzcLMrPFLBHMZ2q-CPAPILCfpwzgriK_ozrjz7rPRX5iwd2O04JGyUbXWuLrqhBGqf-gCrjg_qR4URkizcKQuyO-K3w5Pwd-4dk6UWA6yzF_6A9--mGq-AGlwrZj43sbQU3k5gxs1C3ILU"/>
+<div class="flex flex-col">
+<span class="text-xs font-bold leading-none">Alex Mercer</span>
+<span class="text-[10px] text-secondary">Premium Member</span>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="ml-[220px] p-12 max-w-6xl mx-auto">
+<!-- Header Section -->
+<header class="flex justify-between items-baseline mb-8">
+<h1 class="text-4xl font-extrabold tracking-tight text-on-surface">Categorise Merchants</h1>
+<a class="flex items-center gap-1 text-sm font-medium text-secondary hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-sm">arrow_back</span>
+<span>Transactions</span>
+</a>
+</header>
+<!-- Sub-header & Filters -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+<div class="space-y-1">
+<div class="flex items-center gap-2 text-secondary text-sm font-medium">
+<span>18 merchants</span>
+<span class="w-1 h-1 rounded-full bg-secondary/30"></span>
+<span>47 uncategorised</span>
+<span class="w-1 h-1 rounded-full bg-secondary/30"></span>
+<span>last 30 days</span>
+</div>
+<!-- Progress Section -->
+<div class="flex items-center gap-3 mt-4">
+<div class="w-48 h-1.5 bg-surface-container-low rounded-full overflow-hidden">
+<div class="h-full bg-primary-container w-[16.6%]"></div>
+</div>
+<span class="text-xs font-semibold text-primary">3 of 18 done</span>
+</div>
+</div>
+<!-- Time Range Selector -->
+<div class="bg-surface-container-lowest shadow-sm rounded-xl p-1 flex items-center gap-1 overflow-x-auto no-scrollbar">
+<button class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-secondary-fixed text-on-surface">Last 30 days</button>
+<button class="px-4 py-1.5 rounded-lg text-xs font-medium text-secondary hover:bg-surface-container-low transition-colors">3 months</button>
+<button class="px-4 py-1.5 rounded-lg text-xs font-medium text-secondary hover:bg-surface-container-low transition-colors">6 months</button>
+<button class="px-4 py-1.5 rounded-lg text-xs font-medium text-secondary hover:bg-surface-container-low transition-colors">This year</button>
+<button class="px-4 py-1.5 rounded-lg text-xs font-medium text-secondary hover:bg-surface-container-low transition-colors">All time</button>
+<button class="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium text-secondary hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-sm">calendar_today</span>
+<span>Custom</span>
+</button>
+</div>
+</div>
+<!-- Merchant Table Card -->
+<section class="bg-surface-container-lowest rounded-2xl shadow-[0_12px_40px_rgba(27,28,27,0.04)] overflow-hidden">
+<!-- Table Header -->
+<div class="grid grid-cols-[1.5fr_1fr_1.5fr_60px] gap-4 px-8 py-4 bg-surface-container-low text-[11px] uppercase tracking-widest font-bold text-secondary">
+<span>Merchant Name</span>
+<span class="text-center">Count</span>
+<span>Category Mapping</span>
+<span class="text-right">Action</span>
+</div>
+<!-- Table Rows -->
+<div class="px-8 py-4 divide-y-0 flex flex-col gap-4">
+<!-- Woolworths (Completed State) -->
+<div class="grid grid-cols-[1.5fr_1fr_1.5fr_60px] items-center gap-4 py-2 opacity-30">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center">
+<img class="w-10 h-10 rounded-xl object-cover" data-alt="Fresh vegetables in a supermarket aisle with vibrant colors and soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBAZXmodDzbNpA1YBw0PvhXMKMAmmZfzQN48-qpXV3mpc2_ft36hwyrsuESyciLLD0vehLKA-WUyJZbsC0_nAlV4WyWjo25wDwUIu1AyvvutLkP81wuZtKcSVf9dLSfaJvEBHGuY-RFYBxCh3ydXHYhjGulvUSyXEhNbdNAziooXTaM_Ssxd_2zMnnokW2OLXHmvOxKC6ULLqTQV_7oQ59IZNWLpQWfuxzY0ru3RFQZkP93Ssf7U9aPE-Sy0HpOfI0jC9dcAIrmG-s"/>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-bold tracking-tight">Woolworths</span>
+<span class="material-symbols-outlined text-primary text-base">check_circle</span>
+</div>
+</div>
+<div class="flex justify-center">
+<span class="px-3 py-1 rounded-full bg-surface-container text-xs font-bold">12</span>
+</div>
+<div>
+<div class="inline-flex items-center px-4 py-2 rounded-full bg-primary-container/20 text-primary text-xs font-bold">Groceries</div>
+</div>
+<div class="flex justify-end">
+<button class="text-secondary hover:text-on-surface"><span class="material-symbols-outlined">arrow_forward</span></button>
+</div>
+</div>
+<!-- Shell Service Station -->
+<div class="grid grid-cols-[1.5fr_1fr_1.5fr_60px] items-center gap-4 py-2">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">local_gas_station</span>
+</div>
+<span class="font-bold tracking-tight">Shell Service Station</span>
+</div>
+<div class="flex justify-center">
+<span class="px-2.5 py-1 rounded-full bg-error-container/40 text-tertiary text-[10px] font-extrabold tracking-tight">8 UNCATEGORISED</span>
+</div>
+<div>
+<button class="w-full flex items-center justify-between px-4 py-2.5 rounded-full bg-surface-container-low text-secondary text-xs font-medium hover:bg-surface-container transition-colors group">
+<span>Select category…</span>
+<span class="material-symbols-outlined text-sm group-hover:translate-y-0.5 transition-transform">keyboard_arrow_down</span>
+</button>
+</div>
+<div class="flex justify-end">
+<button class="text-secondary hover:text-on-surface transition-transform active:translate-x-1"><span class="material-symbols-outlined">arrow_forward</span></button>
+</div>
+</div>
+<!-- Netflix Australia -->
+<div class="grid grid-cols-[1.5fr_1fr_1.5fr_60px] items-center gap-4 py-2">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">smart_display</span>
+</div>
+<span class="font-bold tracking-tight">Netflix Australia</span>
+</div>
+<div class="flex justify-center">
+<span class="px-2.5 py-1 rounded-full bg-error-container/40 text-tertiary text-[10px] font-extrabold tracking-tight">1 UNCATEGORISED</span>
+</div>
+<div>
+<button class="w-full flex items-center justify-between px-4 py-2.5 rounded-full bg-surface-container-low text-secondary text-xs font-medium hover:bg-surface-container transition-colors">
+<span>Select category…</span>
+<span class="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+</button>
+</div>
+<div class="flex justify-end">
+<button class="text-secondary hover:text-on-surface"><span class="material-symbols-outlined">arrow_forward</span></button>
+</div>
+</div>
+<!-- Uber Eats -->
+<div class="grid grid-cols-[1.5fr_1fr_1.5fr_60px] items-center gap-4 py-2">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">fastfood</span>
+</div>
+<span class="font-bold tracking-tight">Uber Eats</span>
+</div>
+<div class="flex justify-center">
+<span class="px-2.5 py-1 rounded-full bg-error-container/40 text-tertiary text-[10px] font-extrabold tracking-tight">15 UNCATEGORISED</span>
+</div>
+<div>
+<button class="w-full flex items-center justify-between px-4 py-2.5 rounded-full bg-surface-container-low text-secondary text-xs font-medium hover:bg-surface-container transition-colors">
+<span>Select category…</span>
+<span class="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+</button>
+</div>
+<div class="flex justify-end">
+<button class="text-secondary hover:text-on-surface"><span class="material-symbols-outlined">arrow_forward</span></button>
+</div>
+</div>
+<!-- Bunnings Warehouse -->
+<div class="grid grid-cols-[1.5fr_1fr_1.5fr_60px] items-center gap-4 py-2">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">handyman</span>
+</div>
+<span class="font-bold tracking-tight">Bunnings Warehouse</span>
+</div>
+<div class="flex justify-center">
+<span class="px-2.5 py-1 rounded-full bg-error-container/40 text-tertiary text-[10px] font-extrabold tracking-tight">4 UNCATEGORISED</span>
+</div>
+<div>
+<button class="w-full flex items-center justify-between px-4 py-2.5 rounded-full bg-surface-container-low text-secondary text-xs font-medium hover:bg-surface-container transition-colors">
+<span>Select category…</span>
+<span class="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+</button>
+</div>
+<div class="flex justify-end">
+<button class="text-secondary hover:text-on-surface"><span class="material-symbols-outlined">arrow_forward</span></button>
+</div>
+</div>
+<!-- JB Hi-Fi -->
+<div class="grid grid-cols-[1.5fr_1fr_1.5fr_60px] items-center gap-4 py-2">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">devices</span>
+</div>
+<span class="font-bold tracking-tight">JB Hi-Fi</span>
+</div>
+<div class="flex justify-center">
+<span class="px-2.5 py-1 rounded-full bg-error-container/40 text-tertiary text-[10px] font-extrabold tracking-tight">2 UNCATEGORISED</span>
+</div>
+<div>
+<button class="w-full flex items-center justify-between px-4 py-2.5 rounded-full bg-surface-container-low text-secondary text-xs font-medium hover:bg-surface-container transition-colors">
+<span>Select category…</span>
+<span class="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+</button>
+</div>
+<div class="flex justify-end">
+<button class="text-secondary hover:text-on-surface"><span class="material-symbols-outlined">arrow_forward</span></button>
+</div>
+</div>
+<!-- Priceline Pharmacy -->
+<div class="grid grid-cols-[1.5fr_1fr_1.5fr_60px] items-center gap-4 py-2">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">medical_services</span>
+</div>
+<span class="font-bold tracking-tight">Priceline Pharmacy</span>
+</div>
+<div class="flex justify-center">
+<span class="px-2.5 py-1 rounded-full bg-error-container/40 text-tertiary text-[10px] font-extrabold tracking-tight">3 UNCATEGORISED</span>
+</div>
+<div>
+<button class="w-full flex items-center justify-between px-4 py-2.5 rounded-full bg-surface-container-low text-secondary text-xs font-medium hover:bg-surface-container transition-colors">
+<span>Select category…</span>
+<span class="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+</button>
+</div>
+<div class="flex justify-end">
+<button class="text-secondary hover:text-on-surface"><span class="material-symbols-outlined">arrow_forward</span></button>
+</div>
+</div>
+<!-- Gloria Jeans Coffee -->
+<div class="grid grid-cols-[1.5fr_1fr_1.5fr_60px] items-center gap-4 py-2">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">coffee</span>
+</div>
+<span class="font-bold tracking-tight">Gloria Jeans Coffee</span>
+</div>
+<div class="flex justify-center">
+<span class="px-2.5 py-1 rounded-full bg-error-container/40 text-tertiary text-[10px] font-extrabold tracking-tight">9 UNCATEGORISED</span>
+</div>
+<div>
+<button class="w-full flex items-center justify-between px-4 py-2.5 rounded-full bg-surface-container-low text-secondary text-xs font-medium hover:bg-surface-container transition-colors">
+<span>Select category…</span>
+<span class="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+</button>
+</div>
+<div class="flex justify-end">
+<button class="text-secondary hover:text-on-surface"><span class="material-symbols-outlined">arrow_forward</span></button>
+</div>
+</div>
+</div>
+<!-- Table Footer Actions -->
+<div class="px-8 py-6 bg-surface-container-low flex justify-between items-center">
+<button class="text-xs font-bold text-secondary hover:text-on-surface underline decoration-dotted underline-offset-4">Mark all remaining as 'Personal'</button>
+<div class="flex gap-4">
+<button class="px-6 py-3 rounded-full bg-secondary-container text-secondary text-sm font-bold hover:bg-surface-container-highest transition-all active:scale-95">Save for later</button>
+<button class="px-8 py-3 rounded-full bg-primary text-on-primary text-sm font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">Submit 15 Changes</button>
+</div>
+</div>
+</section>
+<!-- Aesthetic Editorial Quote/Tip -->
+<div class="mt-16 max-w-2xl">
+<h3 class="text-[10px] uppercase tracking-[0.3em] font-bold text-primary mb-4">Curator's Tip</h3>
+<p class="text-xl font-light italic text-secondary leading-relaxed tracking-tight">
+                "Maintaining a clear ledger isn't just about tracking spending—it's about honoring the energy you've invested in your wealth. A well-categorized portfolio reveals the narrative of your lifestyle."
+            </p>
+</div>
+</main>
+</body></html>

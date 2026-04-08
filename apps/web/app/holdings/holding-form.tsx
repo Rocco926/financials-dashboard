@@ -23,6 +23,8 @@ interface Props {
   onCancel: () => void
 }
 
+const inputCls = "w-full bg-surface-container-low border border-secondary-container px-3 py-2 text-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all rounded-xl"
+
 export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
   const isEdit = initial != null
 
@@ -45,7 +47,6 @@ export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch bank accounts for the "Link to account" dropdown
   useEffect(() => {
     fetch('/api/accounts')
       .then((r) => r.json())
@@ -53,7 +54,6 @@ export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
       .catch(() => {/* non-critical */})
   }, [])
 
-  // Ticker search
   const [tickerQuery, setTickerQuery] = useState(initial?.ticker ?? '')
   const [tickerResults, setTickerResults] = useState<TickerResult[]>([])
   const [tickerSearching, setTickerSearching] = useState(false)
@@ -115,7 +115,6 @@ export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
         return
       }
 
-      // Compute derived values client-side for immediate UI update
       const row = json.data
       const u = row.units != null ? parseFloat(String(row.units)) : null
       const ac = row.avgCostPerUnit != null ? parseFloat(String(row.avgCostPerUnit)) : null
@@ -157,34 +156,36 @@ export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
   const isInvestment = type === 'etf' || type === 'stock'
 
   return (
-    <div className="border border-[#E9E7E2] bg-white rounded-lg">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-[#E9E7E2]">
-        <p className="text-sm font-medium text-[#37352F]">
+    <div className="card overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-surface-container-low bg-surface-container-low">
+        <p className="text-sm font-medium text-on-surface">
           {isEdit ? 'Edit holding' : 'Add holding'}
         </p>
         <button
           onClick={onCancel}
           aria-label="Close form"
-          className="text-[#787774] hover:text-[#37352F] transition-colors"
+          className="text-secondary hover:text-on-surface transition-colors"
         >
           <X className="size-4" />
         </button>
       </div>
 
       <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
-        {/* Type */}
+
+        {/* Type toggle */}
         <div>
-          <label className="block section-label text-[#787774] mb-2">Type</label>
-          <div className="flex gap-0 border border-[#E9E7E2]">
+          <label className="block section-label mb-2">Type</label>
+          <div className="flex gap-1 bg-surface-container-low p-1 rounded-xl">
             {(['cash', 'etf', 'stock', 'other'] as const).map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setType(t)}
-                className={`flex-1 py-1.5 text-sm transition-colors capitalize ${
+                className={`flex-1 py-1.5 text-xs font-medium transition-colors rounded-lg capitalize ${
                   type === t
-                    ? 'bg-[#37352F] text-white'
-                    : 'text-[#787774] hover:text-[#37352F] hover:bg-[#F7F6F3]'
+                    ? 'bg-white text-on-surface shadow-sm'
+                    : 'text-secondary hover:text-on-surface'
                 }`}
               >
                 {t.toUpperCase()}
@@ -196,59 +197,57 @@ export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
         {/* Name + Institution */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block section-label text-[#787774] mb-1.5">Name</label>
+            <label className="block section-label mb-1.5">Name</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
               placeholder={isInvestment ? 'e.g. Diversified All Growth' : 'e.g. HISA'}
-              className="w-full border border-[#E9E7E2] px-3 py-1.5 text-sm text-[#37352F] placeholder:text-[#ACABA8] focus:outline-none focus:border-[#37352F] transition-colors"
+              className={inputCls}
             />
           </div>
           <div>
-            <label className="block section-label text-[#787774] mb-1.5">Institution</label>
+            <label className="block section-label mb-1.5">Institution</label>
             <input
               value={institution}
               onChange={(e) => setInstitution(e.target.value)}
               required
               placeholder="e.g. Betashares"
-              className="w-full border border-[#E9E7E2] px-3 py-1.5 text-sm text-[#37352F] placeholder:text-[#ACABA8] focus:outline-none focus:border-[#37352F] transition-colors"
+              className={inputCls}
             />
           </div>
         </div>
 
-        {/* ETF/Stock specific fields */}
+        {/* ETF/Stock fields */}
         {isInvestment && (
           <>
             <div>
-              <label className="block section-label text-[#787774] mb-1.5">Ticker</label>
+              <label className="block section-label mb-1.5">Ticker</label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-[#ACABA8]" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-secondary" />
                 <input
                   value={tickerQuery}
                   onChange={(e) => handleTickerQueryChange(e.target.value)}
                   placeholder="Search e.g. DHHF or Betashares"
-                  className="w-full border border-[#E9E7E2] pl-8 pr-3 py-1.5 text-sm text-[#37352F] placeholder:text-[#ACABA8] focus:outline-none focus:border-[#37352F] transition-colors"
+                  className={`${inputCls} pl-8`}
                 />
                 {tickerSearching && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#ACABA8]">
-                    …
-                  </span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-secondary">…</span>
                 )}
               </div>
               {tickerResults.length > 0 && (
-                <ul className="border border-[#E9E7E2] border-t-0 bg-white divide-y divide-[#EDE9E3]">
+                <ul className="mt-1 bg-white border border-secondary-container rounded-xl shadow-sm divide-y divide-surface-container-low overflow-hidden">
                   {tickerResults.map((r) => (
                     <li key={r.ticker}>
                       <button
                         type="button"
                         onClick={() => selectTicker(r)}
-                        className="w-full text-left px-3 py-2 hover:bg-[#F7F6F3] transition-colors"
+                        className="w-full text-left px-3 py-2.5 hover:bg-surface-container-low transition-colors"
                       >
-                        <span className="text-sm font-medium text-[#37352F]">{r.ticker}</span>
-                        <span className="text-xs text-[#787774] ml-2">{r.name}</span>
+                        <span className="text-sm font-medium text-on-surface">{r.ticker}</span>
+                        <span className="text-xs text-secondary ml-2">{r.name}</span>
                         {r.exchange && (
-                          <span className="text-xs text-[#ACABA8] ml-1">· {r.exchange}</span>
+                          <span className="text-xs text-secondary ml-1">· {r.exchange}</span>
                         )}
                       </button>
                     </li>
@@ -256,15 +255,15 @@ export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
                 </ul>
               )}
               {ticker && tickerQuery !== ticker && (
-                <p className="text-xs text-[#ACABA8] mt-1">
-                  Selected: <span className="text-[#37352F] font-medium">{ticker}</span>
+                <p className="text-xs text-secondary mt-1">
+                  Selected: <span className="text-on-surface font-medium">{ticker}</span>
                 </p>
               )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block section-label text-[#787774] mb-1.5">Units held</label>
+                <label className="block section-label mb-1.5">Units held</label>
                 <input
                   type="number"
                   value={units}
@@ -272,13 +271,11 @@ export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
                   step="any"
                   min="0"
                   placeholder="e.g. 142.538"
-                  className="w-full border border-[#E9E7E2] px-3 py-1.5 text-sm text-[#37352F] placeholder:text-[#ACABA8] focus:outline-none focus:border-[#37352F] transition-colors tabular-nums"
+                  className={`${inputCls} tabular-nums`}
                 />
               </div>
               <div>
-                <label className="block section-label text-[#787774] mb-1.5">
-                  Avg cost / unit
-                </label>
+                <label className="block section-label mb-1.5">Avg cost / unit</label>
                 <input
                   type="number"
                   value={avgCost}
@@ -286,39 +283,35 @@ export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
                   step="any"
                   min="0"
                   placeholder="e.g. 32.50"
-                  className="w-full border border-[#E9E7E2] px-3 py-1.5 text-sm text-[#37352F] placeholder:text-[#ACABA8] focus:outline-none focus:border-[#37352F] transition-colors tabular-nums"
+                  className={`${inputCls} tabular-nums`}
                 />
               </div>
             </div>
           </>
         )}
 
-        {/* Cash / Other: manual balance + optional account link */}
+        {/* Cash/Other fields */}
         {isCashLike && (
           <>
             <div>
-              <label className="block section-label text-[#787774] mb-1.5">
-                Balance (AUD)
-              </label>
+              <label className="block section-label mb-1.5">Balance (AUD)</label>
               <input
                 type="number"
                 value={manualBalance}
                 onChange={(e) => setManualBalance(e.target.value)}
                 step="0.01"
                 placeholder="e.g. 45000"
-                className="w-full border border-[#E9E7E2] px-3 py-1.5 text-sm text-[#37352F] placeholder:text-[#ACABA8] focus:outline-none focus:border-[#37352F] transition-colors tabular-nums"
+                className={`${inputCls} tabular-nums`}
               />
             </div>
 
             {accounts.length > 0 && (
               <div>
-                <label className="block section-label text-[#787774] mb-1.5">
-                  Link to imported account
-                </label>
+                <label className="block section-label mb-1.5">Link to imported account</label>
                 <select
                   value={linkedAccountId}
                   onChange={(e) => setLinkedAccountId(e.target.value)}
-                  className="w-full border border-[#E9E7E2] px-3 py-1.5 text-sm text-[#37352F] focus:outline-none focus:border-[#37352F] transition-colors bg-white"
+                  className={inputCls}
                 >
                   <option value="">None — update balance manually</option>
                   {accounts.map((a) => (
@@ -328,7 +321,7 @@ export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
                   ))}
                 </select>
                 {linkedAccountId && (
-                  <p className="text-xs text-[#ACABA8] mt-1">
+                  <p className="text-xs text-secondary mt-1.5">
                     Balance will auto-update from the most recent transaction whenever you import a statement for this account.
                   </p>
                 )}
@@ -339,17 +332,17 @@ export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
 
         {/* Notes */}
         <div>
-          <label className="block section-label text-[#787774] mb-1.5">Notes (optional)</label>
+          <label className="block section-label mb-1.5">Notes (optional)</label>
           <input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Any notes…"
-            className="w-full border border-[#E9E7E2] px-3 py-1.5 text-sm text-[#37352F] placeholder:text-[#ACABA8] focus:outline-none focus:border-[#37352F] transition-colors"
+            className={inputCls}
           />
         </div>
 
         {error && (
-          <p className="text-sm text-[#E5534B] bg-red-50 border border-red-200 px-3 py-2">
+          <p className="text-sm text-tertiary bg-tertiary-container border border-tertiary/30 px-3 py-2 rounded-xl">
             {error}
           </p>
         )}
@@ -358,14 +351,14 @@ export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 text-sm bg-[#37352F] text-white hover:bg-[#4A4643] transition-colors disabled:opacity-50"
+            className="px-5 py-2 text-sm bg-primary text-white hover:bg-primary-dim transition-colors disabled:opacity-50 rounded-xl"
           >
             {loading ? 'Saving…' : isEdit ? 'Save changes' : 'Add holding'}
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-sm text-[#787774] hover:text-[#37352F] transition-colors"
+            className="px-5 py-2 text-sm text-secondary hover:text-on-surface bg-surface-container-low hover:bg-surface-container transition-colors rounded-xl"
           >
             Cancel
           </button>

@@ -4,31 +4,30 @@
 
 @layer base {
   body {
-    background-color: #F7F6F3;
-    color: #37352F;
+    background-color: #faf9f7;
+    color: #1b1c1b;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Subtle global border-radius for interactive elements */
   input,
   select,
   textarea,
   button {
-    border-radius: 4px;
-  }
-
-  /* Tabular numbers for all financial figures */
-  .tabular-nums {
-    font-variant-numeric: tabular-nums;
+    border-radius: 8px;
   }
 }
 
 @layer utilities {
-  /* Section labels — warm, small, unobtrusive.
-     Deliberately NOT uppercase: all-caps adds visual noise in a soft UI.
-     Tracking is kept minimal so it reads as a label, not a heading. */
   .section-label {
-    @apply text-xs font-medium text-[#ACABA8];
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #615e57;
+  }
+
+  .card {
+    background-color: #ffffff;
+    border-radius: 1rem;
+    box-shadow: 0 12px 40px rgba(27, 28, 27, 0.04);
   }
 }

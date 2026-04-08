@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useTransition } from 'react'
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react'
+import { Plus, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { NetWorthChart } from '@/components/net-worth-chart'
 import { HoldingForm } from './holding-form'
@@ -39,6 +39,22 @@ interface Props {
   initialSnapshots: SnapshotRow[]
 }
 
+// ─── Type badge styles ────────────────────────────────────────────────────────
+
+const typeStyles: Record<HoldingRow['type'], { avatar: string; badge: string }> = {
+  etf:   { avatar: 'bg-[#e8f5e9] text-[#2e7d32]', badge: 'bg-[#e8f5e9] text-[#2e7d32]' },
+  stock: { avatar: 'bg-blue-50 text-blue-600',     badge: 'bg-blue-50 text-blue-600'     },
+  cash:  { avatar: 'bg-secondary-container text-secondary', badge: 'bg-secondary-container text-secondary' },
+  other: { avatar: 'bg-surface-container-highest text-on-surface-variant', badge: 'bg-surface-container-highest text-on-surface-variant' },
+}
+
+const typeLabel: Record<HoldingRow['type'], string> = {
+  cash:  'CASH',
+  etf:   'ETF',
+  stock: 'STOCK',
+  other: 'OTHER',
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function HoldingsClient({ initialHoldings, initialSnapshots }: Props) {
@@ -49,14 +65,9 @@ export function HoldingsClient({ initialHoldings, initialSnapshots }: Props) {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [refreshing, startRefresh] = useTransition()
 
-  // Capture initial holdings in a ref so the mount effect never needs a dep on the prop.
-  // This is a true "run once on mount" effect — we intentionally read the server-rendered
-  // snapshot and don't need to react to prop changes (the parent doesn't re-render this).
   const initialHoldingsRef = useRef(initialHoldings)
 
-  // On mount: trigger today's snapshot save + refresh live prices
   useEffect(() => {
-    // Save today's snapshot (idempotent — server uses ON CONFLICT DO UPDATE)
     fetch('/api/holdings/snapshots', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -73,9 +84,8 @@ export function HoldingsClient({ initialHoldings, initialSnapshots }: Props) {
           })
         }
       })
-      .catch(() => {/* snapshot failure is non-critical */})
+      .catch(() => {})
 
-    // Refresh live prices for ETF/stock holdings
     const tickers = initialHoldingsRef.current
       .filter((h) => (h.type === 'etf' || h.type === 'stock') && h.ticker)
       .map((h) => h.ticker as string)
@@ -84,39 +94,25 @@ export function HoldingsClient({ initialHoldings, initialSnapshots }: Props) {
       fetch(`/api/holdings/prices?tickers=${tickers.join(',')}`)
         .then((r) => r.json())
         .then((json) => {
-          const prices = json.prices as Record<
-            string,
-            { price: number; changePct: number | null }
-          >
+          const prices = json.prices as Record<string, { price: number; changePct: number | null }>
           setHoldings((prev) =>
             prev.map((h) => {
               if (!h.ticker || !prices[h.ticker]) return h
               // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               const p = prices[h.ticker]!
               const units = h.units
-              const currentValue =
-                units != null ? units * p.price : h.currentValue
+              const currentValue = units != null ? units * p.price : h.currentValue
               const costBase = h.costBase
-              const gainLoss =
-                currentValue != null && costBase != null
-                  ? currentValue - costBase
-                  : h.gainLoss
+              const gainLoss = currentValue != null && costBase != null ? currentValue - costBase : h.gainLoss
               const gainLossPct =
                 gainLoss != null && costBase != null && costBase !== 0
                   ? (gainLoss / costBase) * 100
                   : h.gainLossPct
-              return {
-                ...h,
-                livePrice:    p.price,
-                changePct:    p.changePct,
-                currentValue,
-                gainLoss,
-                gainLossPct,
-              }
+              return { ...h, livePrice: p.price, changePct: p.changePct, currentValue, gainLoss, gainLossPct }
             }),
           )
         })
-        .catch(() => {/* price refresh failure is non-critical */})
+        .catch(() => {})
     }
   }, [])
 
@@ -128,13 +124,9 @@ export function HoldingsClient({ initialHoldings, initialSnapshots }: Props) {
 
       if (tickers.length === 0) return
 
-      // Force fresh — invalidate cache by calling prices endpoint
       const res = await fetch(`/api/holdings/prices?tickers=${tickers.join(',')}`)
       const json = await res.json()
-      const prices = json.prices as Record<
-        string,
-        { price: number; changePct: number | null }
-      >
+      const prices = json.prices as Record<string, { price: number; changePct: number | null }>
 
       setHoldings((prev) =>
         prev.map((h) => {
@@ -144,10 +136,7 @@ export function HoldingsClient({ initialHoldings, initialSnapshots }: Props) {
           const units = h.units
           const currentValue = units != null ? units * p.price : h.currentValue
           const costBase = h.costBase
-          const gainLoss =
-            currentValue != null && costBase != null
-              ? currentValue - costBase
-              : h.gainLoss
+          const gainLoss = currentValue != null && costBase != null ? currentValue - costBase : h.gainLoss
           const gainLossPct =
             gainLoss != null && costBase != null && costBase !== 0
               ? (gainLoss / costBase) * 100
@@ -178,216 +167,268 @@ export function HoldingsClient({ initialHoldings, initialSnapshots }: Props) {
     setDeleteConfirmId(null)
   }
 
-  const typeLabel: Record<HoldingRow['type'], string> = {
-    cash:  'Cash',
-    etf:   'ETF',
-    stock: 'Stock',
-    other: 'Other',
-  }
+  // ─── Summary computations (derived from live holdings state) ────────────────
 
-  // Group by institution
-  const institutions = Array.from(new Set(holdings.map((h) => h.institution)))
+  const totalValue    = holdings.reduce((sum, h) => sum + (h.currentValue ?? 0), 0)
+  const totalCostBase = holdings.reduce((sum, h) => sum + (h.costBase ?? 0), 0)
+  const totalGainLoss = totalValue - totalCostBase
+  const totalGainLossPct =
+    totalCostBase > 0 ? (totalGainLoss / totalCostBase) * 100 : null
+  const gainColour    = totalGainLoss >= 0 ? 'text-primary' : 'text-tertiary'
 
   return (
     <div className="space-y-8">
 
-      {/* Net Worth Chart */}
+      {/* ── Page header ─────────────────────────────────────────────────────── */}
+      <header className="flex justify-between items-center mb-10">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-on-surface">Holdings</h2>
+          <p className="text-sm text-secondary mt-1">Portfolio performance as of today</p>
+        </div>
+        <button
+          onClick={() => { setEditTarget(null); setShowForm(true) }}
+          className="bg-primary hover:opacity-90 transition-all text-white px-6 py-3 rounded-2xl flex items-center gap-2 font-bold active:scale-95"
+        >
+          <Plus className="size-5" />
+          Add Holding
+        </button>
+      </header>
+
+      {/* ── Portfolio summary bar ────────────────────────────────────────────── */}
+      {holdings.length > 0 && (
+        <section className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+          {/* Total net worth */}
+          <div className="md:col-span-1 bg-white rounded-2xl p-6 shadow-ambient">
+            <p className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">
+              Total Net Worth
+            </p>
+            <h3 className="text-3xl font-black tracking-tighter tabular-nums">
+              {formatCurrency(totalValue)}
+            </h3>
+          </div>
+
+          {/* Cost base */}
+          <div className="bg-white rounded-2xl p-6 shadow-ambient flex flex-col justify-center">
+            <p className="text-xs font-medium text-secondary mb-1">Cost base</p>
+            <p className="text-xl font-bold tabular-nums text-on-surface">
+              {formatCurrency(totalCostBase)}
+            </p>
+          </div>
+
+          {/* Total gain */}
+          <div className="bg-white rounded-2xl p-6 shadow-ambient flex flex-col justify-center">
+            <p className="text-xs font-medium text-secondary mb-1">Total gain</p>
+            <p className={`text-xl font-bold tabular-nums ${gainColour}`}>
+              {totalGainLoss >= 0 ? '+' : ''}{formatCurrency(totalGainLoss)}
+              {totalGainLossPct != null && (
+                <span className="text-sm font-medium ml-1">
+                  ({totalGainLossPct >= 0 ? '+' : ''}{totalGainLossPct.toFixed(1)}%)
+                </span>
+              )}
+            </p>
+          </div>
+
+          {/* Unrealised % */}
+          <div className="bg-white rounded-2xl p-6 shadow-ambient flex flex-col justify-center">
+            <p className="text-xs font-medium text-secondary mb-1">Unrealised %</p>
+            <p className={`text-xl font-bold tabular-nums ${gainColour}`}>
+              {totalGainLossPct != null
+                ? `${totalGainLossPct >= 0 ? '+' : ''}${totalGainLossPct.toFixed(1)}%`
+                : '—'}
+            </p>
+          </div>
+        </section>
+      )}
+
+      {/* ── Net Worth Chart ──────────────────────────────────────────────────── */}
       {snapshots.length > 1 && (
-        <div className="border border-[#E9E7E2] bg-white rounded-lg">
-          <div className="px-6 pt-5 pb-2 border-b border-[#E9E7E2]">
-            <p className="section-label text-[#787774]">Net worth over time</p>
-          </div>
-          <div className="px-6 py-4">
-            <NetWorthChart data={snapshots} />
-          </div>
+        <div className="bg-white rounded-2xl shadow-ambient p-6">
+          <p className="text-sm font-medium text-secondary mb-4">Net worth over time</p>
+          <NetWorthChart data={snapshots} />
         </div>
       )}
 
-      {/* Holdings table */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between">
-          <p className="section-label text-[#787774]">Positions</p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              aria-label="Refresh live prices"
-              className="flex items-center gap-1.5 text-xs text-[#787774] hover:text-[#37352F] transition-colors disabled:opacity-40"
-            >
-              <RefreshCw className={`size-3 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh prices
-            </button>
-            <button
-              onClick={() => { setEditTarget(null); setShowForm(true) }}
-              className="flex items-center gap-1.5 text-sm text-[#37352F] border border-[#37352F] px-3 py-1.5 hover:bg-[#37352F] hover:text-white transition-colors"
-            >
-              <Plus className="size-[14px]" />
-              Add holding
-            </button>
-          </div>
+      {/* ── Holdings table card ──────────────────────────────────────────────── */}
+      {holdings.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow-ambient px-6 py-16 text-center">
+          <p className="text-sm text-secondary">No holdings yet.</p>
+          <button
+            onClick={() => { setEditTarget(null); setShowForm(true) }}
+            className="mt-3 text-sm text-primary font-medium hover:opacity-70 transition-opacity"
+          >
+            Add your first holding
+          </button>
         </div>
+      ) : (
+        <div className="bg-white rounded-2xl shadow-ambient overflow-hidden">
 
-        {holdings.length === 0 ? (
-          <div className="border border-[#E9E7E2] bg-white rounded-lg px-6 py-16 text-center">
-            <p className="text-sm text-[#787774]">No holdings yet.</p>
-            <button
-              onClick={() => { setEditTarget(null); setShowForm(true) }}
-              className="mt-3 text-sm text-[#37352F] underline hover:no-underline"
-            >
-              Add your first holding
-            </button>
+          {/* Table header panel */}
+          <div className="p-6 bg-surface-container-low flex justify-between items-end">
+            <div>
+              <h4 className="text-lg font-bold tracking-tight text-on-surface">Active Assets</h4>
+              <p className="text-[10px] text-secondary uppercase tracking-widest mt-1">
+                Portfolio positions
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                aria-label="Refresh live prices"
+                className="flex items-center gap-1.5 text-xs text-secondary hover:text-on-surface transition-colors disabled:opacity-40"
+              >
+                <RefreshCw className={`size-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+              <button
+                onClick={() => { setEditTarget(null); setShowForm(true) }}
+                className="flex items-center gap-1.5 text-sm font-bold text-white bg-primary px-5 py-2.5 hover:opacity-90 transition-all rounded-2xl active:scale-95"
+              >
+                <Plus className="size-4" />
+                Add Holding
+              </button>
+            </div>
           </div>
-        ) : (
-          <div className="border border-[#E9E7E2] bg-white rounded-lg">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[#E9E7E2]">
-                  <th className="px-4 py-2.5 text-left section-label font-medium">Name</th>
-                  <th className="px-4 py-2.5 text-left section-label font-medium">Type</th>
-                  <th className="px-4 py-2.5 text-right section-label font-medium">Units</th>
-                  <th className="px-4 py-2.5 text-right section-label font-medium">Price</th>
-                  <th className="px-4 py-2.5 text-right section-label font-medium">Value</th>
-                  <th className="px-4 py-2.5 text-right section-label font-medium">Cost base</th>
-                  <th className="px-4 py-2.5 text-right section-label font-medium">G/L</th>
-                  <th className="px-4 py-2.5 w-16" />
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="text-[11px] font-bold text-secondary uppercase tracking-wider bg-surface-container-low/50">
+                <tr>
+                  <th className="px-6 py-4">Holding</th>
+                  <th className="px-6 py-4">Type</th>
+                  <th className="px-6 py-4">Units</th>
+                  <th className="px-6 py-4">Avg Cost</th>
+                  <th className="px-6 py-4">Current Price</th>
+                  <th className="px-6 py-4">Current Value</th>
+                  <th className="px-6 py-4">Cost Base</th>
+                  <th className="px-6 py-4">Gain / Loss</th>
+                  <th className="px-6 py-4"></th>
                 </tr>
               </thead>
-              <tbody>
-                {institutions.map((inst) => {
-                  const rows = holdings.filter((h) => h.institution === inst)
-                  const instTotal = rows.reduce((s, h) => s + (h.currentValue ?? 0), 0)
-                  return (
-                    <React.Fragment key={`inst-${inst}`}>
-                      {/* Institution sub-header */}
-                      <tr className="border-b border-[#EDE9E3] bg-[#F7F6F3]">
-                        <td
-                          colSpan={8}
-                          className="px-4 py-1.5 section-label text-[#787774]"
-                        >
-                          {inst}
-                          <span className="ml-2 text-[#37352F] font-medium tabular-nums">
-                            {formatCurrency(instTotal)}
-                          </span>
-                        </td>
-                      </tr>
+              <tbody className="divide-y divide-surface-container-low/60">
+                {holdings.map((h) => {
+                  const isCash = h.type === 'cash' || h.type === 'other'
+                  const styles = typeStyles[h.type]
+                  const initial = h.name.charAt(0).toUpperCase()
 
-                      {rows.map((h) => (
-                        <tr
-                          key={h.id}
-                          className="border-b border-[#EDE9E3] last:border-0 hover:bg-[#F7F6F3] transition-colors group"
-                        >
-                          <td className="px-4 py-2.5">
-                            <p className="text-[#37352F] font-medium">{h.name}</p>
+                  return (
+                    <tr key={h.id} className="group hover:bg-surface-container-low/30 transition-colors">
+
+                      {/* Holding name + avatar */}
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${styles.avatar}`}>
+                            {initial}
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm text-on-surface">{h.name}</p>
                             {h.ticker && (
-                              <p className="text-xs text-[#ACABA8] mt-0.5">{h.ticker}</p>
+                              <p className="text-xs text-secondary">{h.ticker}</p>
                             )}
-                          </td>
-                          <td className="px-4 py-2.5 text-[#787774] text-xs">
-                            {typeLabel[h.type]}
-                          </td>
-                          <td className="px-4 py-2.5 text-right text-[#787774] tabular-nums text-xs">
-                            {h.units != null ? h.units.toLocaleString(undefined, { maximumFractionDigits: 4 }) : '—'}
-                          </td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-xs">
-                            {h.livePrice != null ? (
-                              <span>
-                                <span className="text-[#37352F]">
-                                  {formatCurrency(h.livePrice)}
-                                </span>
-                                {h.changePct != null && (
-                                  <span
-                                    className={`ml-1.5 ${
-                                      h.changePct >= 0
-                                        ? 'text-[#4CAF7D]'
-                                        : 'text-[#E5534B]'
-                                    }`}
-                                  >
-                                    {h.changePct >= 0 ? '+' : ''}
-                                    {h.changePct.toFixed(2)}%
-                                  </span>
-                                )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Type badge */}
+                      <td className="px-6 py-5">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${styles.badge}`}>
+                          {typeLabel[h.type]}
+                        </span>
+                      </td>
+
+                      {/* Units */}
+                      <td className="px-6 py-5 text-sm font-medium text-on-surface tabular-nums">
+                        {h.units != null
+                          ? h.units.toLocaleString(undefined, { maximumFractionDigits: 4 })
+                          : <span className="text-secondary">—</span>}
+                      </td>
+
+                      {/* Avg cost */}
+                      <td className="px-6 py-5 text-sm text-secondary tabular-nums">
+                        {h.avgCostPerUnit != null ? formatCurrency(h.avgCostPerUnit) : <span>—</span>}
+                      </td>
+
+                      {/* Current price */}
+                      <td className="px-6 py-5 text-sm tabular-nums">
+                        {isCash ? (
+                          <span className="text-secondary">—</span>
+                        ) : h.livePrice != null ? (
+                          <span className="font-bold text-on-surface">
+                            {formatCurrency(h.livePrice)}
+                            {h.changePct != null && (
+                              <span className={`ml-1 text-xs font-bold ${h.changePct >= 0 ? 'text-primary' : 'text-tertiary'}`}>
+                                {h.changePct >= 0 ? '+' : ''}{h.changePct.toFixed(2)}%
                               </span>
-                            ) : (
-                              <span className="text-[#ACABA8]">—</span>
                             )}
-                          </td>
-                          <td className="px-4 py-2.5 text-right tabular-nums font-medium">
-                            {h.currentValue != null
-                              ? formatCurrency(h.currentValue)
-                              : <span className="text-[#ACABA8]">—</span>}
-                          </td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-[#787774] text-xs">
-                            {h.costBase != null
-                              ? formatCurrency(h.costBase)
-                              : <span className="text-[#ACABA8]">—</span>}
-                          </td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-xs">
-                            {h.gainLoss != null ? (
-                              <span className={h.gainLoss >= 0 ? 'text-[#4CAF7D]' : 'text-[#E5534B]'}>
-                                <span className="flex items-center justify-end gap-1">
-                                  {h.gainLoss >= 0
-                                    ? <TrendingUp className="size-3" />
-                                    : <TrendingDown className="size-3" />}
-                                  {h.gainLoss >= 0 ? '+' : ''}
-                                  {formatCurrency(h.gainLoss)}
-                                  {h.gainLossPct != null && (
-                                    <span className="text-[10px] opacity-70">
-                                      ({h.gainLossPct >= 0 ? '+' : ''}{h.gainLossPct.toFixed(1)}%)
-                                    </span>
-                                  )}
-                                </span>
+                          </span>
+                        ) : (
+                          <span className="text-secondary">—</span>
+                        )}
+                      </td>
+
+                      {/* Current value */}
+                      <td className="px-6 py-5 text-sm font-bold text-on-surface tabular-nums">
+                        {h.currentValue != null ? formatCurrency(h.currentValue) : <span className="text-secondary font-normal">—</span>}
+                      </td>
+
+                      {/* Cost base */}
+                      <td className="px-6 py-5 text-sm text-secondary tabular-nums">
+                        {h.costBase != null ? formatCurrency(h.costBase) : <span>—</span>}
+                      </td>
+
+                      {/* Gain / Loss */}
+                      <td className="px-6 py-5 text-sm tabular-nums">
+                        {h.gainLoss != null ? (
+                          <span className={`font-bold ${h.gainLoss >= 0 ? 'text-primary' : 'text-tertiary'}`}>
+                            {h.gainLoss >= 0 ? '+' : ''}{formatCurrency(h.gainLoss)}
+                            {h.gainLossPct != null && (
+                              <span className="ml-1 text-xs font-medium opacity-80">
+                                ({h.gainLossPct >= 0 ? '+' : ''}{h.gainLossPct.toFixed(1)}%)
                               </span>
-                            ) : (
-                              <span className="text-[#ACABA8]">—</span>
                             )}
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={() => { setEditTarget(h); setShowForm(true) }}
-                                aria-label={`Edit ${h.name}`}
-                                className="text-[#787774] hover:text-[#37352F] transition-colors"
-                              >
-                                <Pencil className="size-3.5" />
-                              </button>
-                              {deleteConfirmId === h.id ? (
-                                <span className="flex items-center gap-1 text-xs">
-                                  <button
-                                    onClick={() => handleDelete(h.id)}
-                                    className="text-[#E5534B] hover:underline"
-                                  >
-                                    Delete
-                                  </button>
-                                  <button
-                                    onClick={() => setDeleteConfirmId(null)}
-                                    className="text-[#787774] hover:underline"
-                                  >
-                                    Cancel
-                                  </button>
-                                </span>
-                              ) : (
-                                <button
-                                  onClick={() => setDeleteConfirmId(h.id)}
-                                  aria-label={`Delete ${h.name}`}
-                                  className="text-[#787774] hover:text-[#E5534B] transition-colors"
-                                >
-                                  <Trash2 className="size-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </React.Fragment>
+                          </span>
+                        ) : (
+                          <span className="text-secondary">—</span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-6 py-5 text-right">
+                        <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => { setEditTarget(h); setShowForm(true) }}
+                            aria-label={`Edit ${h.name}`}
+                            className="text-secondary hover:text-on-surface transition-colors text-xs font-medium"
+                          >
+                            Edit
+                          </button>
+                          {deleteConfirmId === h.id ? (
+                            <span className="flex items-center gap-1 text-xs">
+                              <button onClick={() => handleDelete(h.id)} className="text-tertiary hover:underline">Confirm</button>
+                              <button onClick={() => setDeleteConfirmId(null)} className="text-secondary hover:underline">Cancel</button>
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => setDeleteConfirmId(h.id)}
+                              aria-label={`Delete ${h.name}`}
+                              className="text-secondary hover:text-tertiary transition-colors text-xs font-medium"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
                   )
                 })}
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Add / Edit form drawer */}
+      {/* ── Add / Edit form drawer ───────────────────────────────────────────── */}
       {showForm && (
         <HoldingForm
           initial={editTarget}

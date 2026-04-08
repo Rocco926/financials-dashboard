@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-primary-fixed-variant": "#005232",
+            "error": "#ba1a1a",
+            "tertiary-fixed": "#ffdad6",
+            "outline": "#6e7a71",
+            "on-error": "#ffffff",
+            "inverse-surface": "#2f3130",
+            "surface": "#faf9f7",
+            "error-container": "#ffdad6",
+            "primary": "#006c44",
+            "tertiary-container": "#ff6f65",
+            "on-secondary-fixed-variant": "#494740",
+            "surface-container": "#efeeec",
+            "on-tertiary-fixed-variant": "#8e1215",
+            "primary-fixed": "#93f7bf",
+            "tertiary-fixed-dim": "#ffb4ac",
+            "on-surface-variant": "#3e4942",
+            "surface-bright": "#faf9f7",
+            "surface-tint": "#006c44",
+            "outline-variant": "#bdcabf",
+            "on-background": "#1b1c1b",
+            "on-secondary-fixed": "#1d1c16",
+            "surface-container-low": "#f4f3f1",
+            "secondary-fixed": "#e7e2d9",
+            "secondary-fixed-dim": "#cbc6bd",
+            "surface-dim": "#dbdad8",
+            "surface-container-high": "#e9e8e6",
+            "secondary-container": "#e7e2d9",
+            "on-error-container": "#93000a",
+            "inverse-primary": "#77daa4",
+            "primary-container": "#4caf7d",
+            "on-primary-container": "#003d25",
+            "primary-fixed-dim": "#77daa4",
+            "on-primary": "#ffffff",
+            "surface-variant": "#e3e2e0",
+            "on-secondary-container": "#67645d",
+            "tertiary": "#b02d29",
+            "inverse-on-surface": "#f2f1ee",
+            "surface-container-lowest": "#ffffff",
+            "secondary": "#615e57",
+            "on-surface": "#1b1c1b",
+            "surface-container-highest": "#e3e2e0",
+            "on-primary-fixed": "#002112",
+            "background": "#faf9f7",
+            "on-tertiary-container": "#700008",
+            "on-tertiary": "#ffffff",
+            "on-secondary": "#ffffff",
+            "on-tertiary-fixed": "#410003"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "2xl": "1rem",
+            "3xl": "1.5rem",
+            "full": "9999px"
+          },
+          "fontFamily": {
+            "headline": ["Inter"],
+            "body": ["Inter"],
+            "label": ["Inter"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    body {
+      background-color: #EDECEA;
+      color: #1b1c1b;
+      font-family: 'Inter', sans-serif;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+      vertical-align: middle;
+    }
+    .ambient-shadow {
+      box-shadow: 0 12px 40px rgba(27, 28, 27, 0.04);
+    }
+    .glass-effect {
+      backdrop-filter: blur(12px);
+      background-color: rgba(255, 255, 255, 0.8);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<aside class="w-[220px] h-screen sticky top-0 left-0 bg-[#f4f3f1] dark:bg-slate-900 border-r-0 flex flex-col p-6 gap-8 shrink-0">
+<div class="flex flex-col gap-1">
+<h1 class="text-xl font-bold tracking-tighter text-[#1b1c1b] dark:text-[#faf9f7]">The Ledger</h1>
+<p class="text-[10px] uppercase tracking-widest text-secondary opacity-60">Curated Finance</p>
+</div>
+<nav class="flex-1 flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-3 text-[#615e57] dark:text-slate-400 hover:bg-[#ffffff]/50 dark:hover:bg-slate-800/50 transition-all duration-200 rounded-2xl" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#615e57] dark:text-slate-400 hover:bg-[#ffffff]/50 dark:hover:bg-slate-800/50 transition-all duration-200 rounded-2xl" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="text-sm font-medium">Holdings</span>
+</a>
+<!-- Active State (Transactions/Import History is nested here) -->
+<a class="flex items-center gap-3 px-4 py-3 bg-[#ffffff] dark:bg-slate-800 text-[#006c44] dark:text-[#4caf7d] rounded-2xl font-semibold shadow-sm scale-98 active:opacity-80 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="text-sm font-medium">Transactions</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#615e57] dark:text-slate-400 hover:bg-[#ffffff]/50 dark:hover:bg-slate-800/50 transition-all duration-200 rounded-2xl" href="#">
+<span class="material-symbols-outlined" data-icon="savings">savings</span>
+<span class="text-sm font-medium">Budgets</span>
+</a>
+</nav>
+<div class="pt-6 mt-auto flex flex-col gap-6">
+<div class="flex items-center gap-3 p-2 bg-[#ffffff]/30 rounded-2xl">
+<img alt="Julian Vane" class="w-10 h-10 rounded-xl object-cover" data-alt="professional portrait of Julian Vane in soft studio lighting with warm neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_stu7uyqkRRYQB2MTEk0T92REYEXxYcKmfHLwLmr_MB1eFFkMn3QRh8o7mO4vVJSY7fiVqaeUh3Mf9643aV7sWd5H1cQXcLJplqwZjIvLRDE9uW7bUks3ezNcpiOR6dmw5_80hMRIds0SAEntlBwNR15AdquaokR6_cFdYVH9Y9hP_VwZpYEyEx0mpBPhg99Lh4hoSIfgIUd6_R1kBvhfU7bEeBNYgd5o6bWNtTts7JxYNov6YFbF1vkfT8pmQfQViz5KB_ZNQEk"/>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-on-surface">Julian Vane</span>
+<span class="text-[10px] text-secondary">Premium Account</span>
+</div>
+</div>
+<button class="flex items-center gap-3 px-4 py-2 text-secondary hover:text-error transition-colors text-sm">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span>Sign Out</span>
+</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-screen overflow-y-auto">
+<!-- TopAppBar -->
+<header class="w-full h-20 sticky top-0 z-40 bg-[#faf9f7] dark:bg-slate-950 flex justify-between items-center px-8 border-b border-[#1b1c1b]/5 dark:border-white/5 shrink-0">
+<div class="flex items-center gap-6">
+<a class="flex items-center gap-2 text-secondary hover:text-on-surface transition-colors text-sm font-medium" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="arrow_back">arrow_back</span>
+          Import
+        </a>
+<h2 class="text-2xl font-bold tracking-tight text-[#1b1c1b] dark:text-[#faf9f7]">Import History</h2>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-primary hover:bg-primary-container text-on-primary px-6 py-2.5 rounded-3xl font-semibold text-sm transition-all active:scale-95 shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+          New Import
+        </button>
+</div>
+</header>
+<div class="p-8 max-w-6xl mx-auto w-full flex flex-col gap-8">
+<!-- Summary Bar -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-3xl ambient-shadow flex flex-col gap-1 border-b border-transparent">
+<span class="text-xs font-medium text-secondary tracking-wide uppercase">Total imports</span>
+<span class="text-4xl font-bold tracking-tighter text-on-surface">24</span>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-3xl ambient-shadow flex flex-col gap-1">
+<span class="text-xs font-medium text-secondary tracking-wide uppercase">Total transactions added</span>
+<span class="text-4xl font-bold tracking-tighter text-on-surface">1,847</span>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest p-6 rounded-3xl ambient-shadow flex flex-col gap-1">
+<span class="text-xs font-medium text-secondary tracking-wide uppercase">Last import</span>
+<span class="text-4xl font-bold tracking-tighter text-on-surface">2 days ago</span>
+</div>
+</section>
+<!-- Import History Table Card -->
+<section class="bg-surface-container-lowest rounded-3xl ambient-shadow overflow-hidden">
+<!-- Table Header -->
+<div class="grid grid-cols-12 px-8 py-5 bg-[#f4f3f1] text-[11px] font-bold uppercase tracking-widest text-secondary">
+<div class="col-span-2">Date &amp; Time</div>
+<div class="col-span-3">File Name</div>
+<div class="col-span-2">Account</div>
+<div class="col-span-2">Added</div>
+<div class="col-span-1">Skipped</div>
+<div class="col-span-2 text-right">Status</div>
+</div>
+<!-- Table Rows -->
+<div class="flex flex-col px-4 py-2">
+<!-- Row 1 -->
+<div class="grid grid-cols-12 items-center px-4 py-4 rounded-2xl hover:bg-surface transition-all duration-200 my-1 group">
+<div class="col-span-2 text-sm text-on-surface font-medium">7 Apr 2026 <span class="block text-xs text-secondary font-normal">11:42pm</span></div>
+<div class="col-span-3 text-sm text-secondary font-medium">nab-export-apr2026.csv</div>
+<div class="col-span-2 text-sm text-secondary">NAB Everyday Account</div>
+<div class="col-span-2">
+<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#dcfce7] text-[#006c44]">23 added</span>
+</div>
+<div class="col-span-1 text-sm text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-[#e7e2d9] text-[#615e57] text-[10px]">4</span>
+</div>
+<div class="col-span-2 text-right">
+<span class="inline-flex items-center gap-1 text-sm font-semibold text-[#4caf7d]">
+<span class="material-symbols-outlined text-base" data-icon="check_circle">check_circle</span> Success
+              </span>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="grid grid-cols-12 items-center px-4 py-4 rounded-2xl hover:bg-surface transition-all duration-200 my-1 group">
+<div class="col-span-2 text-sm text-on-surface font-medium">5 Apr 2026 <span class="block text-xs text-secondary font-normal">9:15am</span></div>
+<div class="col-span-3 text-sm text-secondary font-medium">nab-export-apr2026.csv</div>
+<div class="col-span-2 text-sm text-secondary">Visa Platinum</div>
+<div class="col-span-2">
+<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#dcfce7] text-[#006c44]">41 added</span>
+</div>
+<div class="col-span-1 text-sm text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-[#e7e2d9] text-[#615e57] text-[10px]">0</span>
+</div>
+<div class="col-span-2 text-right">
+<span class="inline-flex items-center gap-1 text-sm font-semibold text-[#4caf7d]">
+<span class="material-symbols-outlined text-base" data-icon="check_circle">check_circle</span> Success
+              </span>
+</div>
+</div>
+<!-- Row 3 -->
+<div class="grid grid-cols-12 items-center px-4 py-4 rounded-2xl hover:bg-surface transition-all duration-200 my-1 group">
+<div class="col-span-2 text-sm text-on-surface font-medium">1 Apr 2026 <span class="block text-xs text-secondary font-normal">8:30pm</span></div>
+<div class="col-span-3 text-sm text-secondary font-medium">nab-visa-mar2026.csv</div>
+<div class="col-span-2 text-sm text-secondary">Visa Platinum</div>
+<div class="col-span-2">
+<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#dcfce7] text-[#006c44]">68 added</span>
+</div>
+<div class="col-span-1 text-sm text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-[#e7e2d9] text-[#615e57] text-[10px]">12</span>
+</div>
+<div class="col-span-2 text-right">
+<span class="inline-flex items-center gap-1 text-sm font-semibold text-[#4caf7d]">
+<span class="material-symbols-outlined text-base" data-icon="check_circle">check_circle</span> Success
+              </span>
+</div>
+</div>
+<!-- Row 4 -->
+<div class="grid grid-cols-12 items-center px-4 py-4 rounded-2xl hover:bg-surface transition-all duration-200 my-1 group">
+<div class="col-span-2 text-sm text-on-surface font-medium">28 Mar 2026 <span class="block text-xs text-secondary font-normal">6:00pm</span></div>
+<div class="col-span-3 text-sm text-secondary font-medium">nab-export-mar2026.csv</div>
+<div class="col-span-2 text-sm text-secondary">NAB Everyday Account</div>
+<div class="col-span-2">
+<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#dcfce7] text-[#006c44]">55 added</span>
+</div>
+<div class="col-span-1 text-sm text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-[#e7e2d9] text-[#615e57] text-[10px]">8</span>
+</div>
+<div class="col-span-2 text-right">
+<span class="inline-flex items-center gap-1 text-sm font-semibold text-[#4caf7d]">
+<span class="material-symbols-outlined text-base" data-icon="check_circle">check_circle</span> Success
+              </span>
+</div>
+</div>
+<!-- Row 5 (ERROR) -->
+<div class="grid grid-cols-12 items-center px-4 py-4 rounded-2xl hover:bg-surface transition-all duration-200 my-1 group">
+<div class="col-span-2 text-sm text-on-surface font-medium">15 Mar 2026 <span class="block text-xs text-secondary font-normal">2:14pm</span></div>
+<div class="col-span-3 text-sm text-secondary font-medium">macquarie-mar.csv</div>
+<div class="col-span-2 text-sm text-secondary">Macquarie HISA</div>
+<div class="col-span-2">
+<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-tertiary-fixed text-tertiary">0 added</span>
+</div>
+<div class="col-span-1 text-sm text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-[#e7e2d9] text-[#615e57] text-[10px]">0</span>
+</div>
+<div class="col-span-2 text-right">
+<span class="inline-flex items-center gap-1 text-sm font-semibold text-[#b02d29]">
+<span class="material-symbols-outlined text-base" data-icon="cancel">cancel</span> Error
+              </span>
+</div>
+</div>
+<!-- Row 6 -->
+<div class="grid grid-cols-12 items-center px-4 py-4 rounded-2xl hover:bg-surface transition-all duration-200 my-1 group">
+<div class="col-span-2 text-sm text-on-surface font-medium">1 Mar 2026 <span class="block text-xs text-secondary font-normal">9:00am</span></div>
+<div class="col-span-3 text-sm text-secondary font-medium">nab-feb2026.csv</div>
+<div class="col-span-2 text-sm text-secondary">NAB Everyday Account</div>
+<div class="col-span-2">
+<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#dcfce7] text-[#006c44]">72 added</span>
+</div>
+<div class="col-span-1 text-sm text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-[#e7e2d9] text-[#615e57] text-[10px]">3</span>
+</div>
+<div class="col-span-2 text-right">
+<span class="inline-flex items-center gap-1 text-sm font-semibold text-[#4caf7d]">
+<span class="material-symbols-outlined text-base" data-icon="check_circle">check_circle</span> Success
+              </span>
+</div>
+</div>
+<!-- Row 7 -->
+<div class="grid grid-cols-12 items-center px-4 py-4 rounded-2xl hover:bg-surface transition-all duration-200 my-1 group">
+<div class="col-span-2 text-sm text-on-surface font-medium">28 Feb 2026 <span class="block text-xs text-secondary font-normal">7:45pm</span></div>
+<div class="col-span-3 text-sm text-secondary font-medium">visa-feb2026.csv</div>
+<div class="col-span-2 text-sm text-secondary">Visa Platinum</div>
+<div class="col-span-2">
+<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#dcfce7] text-[#006c44]">89 added</span>
+</div>
+<div class="col-span-1 text-sm text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-[#e7e2d9] text-[#615e57] text-[10px]">15</span>
+</div>
+<div class="col-span-2 text-right">
+<span class="inline-flex items-center gap-1 text-sm font-semibold text-[#4caf7d]">
+<span class="material-symbols-outlined text-base" data-icon="check_circle">check_circle</span> Success
+              </span>
+</div>
+</div>
+<!-- Row 8 -->
+<div class="grid grid-cols-12 items-center px-4 py-4 rounded-2xl hover:bg-surface transition-all duration-200 my-1 group border-b-0">
+<div class="col-span-2 text-sm text-on-surface font-medium">1 Feb 2026 <span class="block text-xs text-secondary font-normal">8:00am</span></div>
+<div class="col-span-3 text-sm text-secondary font-medium">nab-jan2026.csv</div>
+<div class="col-span-2 text-sm text-secondary">NAB Everyday Account</div>
+<div class="col-span-2">
+<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#dcfce7] text-[#006c44]">64 added</span>
+</div>
+<div class="col-span-1 text-sm text-secondary">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-[#e7e2d9] text-[#615e57] text-[10px]">7</span>
+</div>
+<div class="col-span-2 text-right">
+<span class="inline-flex items-center gap-1 text-sm font-semibold text-[#4caf7d]">
+<span class="material-symbols-outlined text-base" data-icon="check_circle">check_circle</span> Success
+              </span>
+</div>
+</div>
+</div>
+</section>
+<!-- Pagination/Footer suggestive area -->
+<footer class="flex items-center justify-between px-4 pb-12">
+<p class="text-xs text-secondary">Showing 8 of 24 imports</p>
+<div class="flex gap-2">
+<button class="px-4 py-2 bg-surface-container-low text-secondary text-xs font-semibold rounded-xl hover:bg-surface-container-high transition-colors">Previous</button>
+<button class="px-4 py-2 bg-surface-container-lowest text-on-surface text-xs font-semibold rounded-xl shadow-sm hover:bg-surface-container-high transition-colors">Next</button>
+</div>
+</footer>
+</div>
+</main>
+</body></html>

@@ -4,8 +4,8 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { db, holdings } from '@/lib/db'
-import { eq } from 'drizzle-orm'
+import { db, holdings, transactions } from '@/lib/db'
+import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 const patchSchema = z.object({
@@ -55,6 +55,19 @@ export async function PATCH(
   if (update.linkedAccountId !== undefined) dbUpdate.linkedAccountId = update.linkedAccountId ?? null
 
   dbUpdate.updatedAt = new Date()
+
+  // If a linkedAccountId is being set (or changed), immediately sync
+  // manualBalance from the most recent transaction balance for that account.
+  const newLinkedId = update.linkedAccountId
+  if (newLinkedId) {
+    const [latest] = await db
+      .select({ balance: transactions.balance })
+      .from(transactions)
+      .where(eq(transactions.accountId, newLinkedId))
+      .orderBy(desc(transactions.date), desc(transactions.createdAt))
+      .limit(1)
+    if (latest?.balance != null) dbUpdate.manualBalance = String(latest.balance)
+  }
 
   const [row] = await db
     .update(holdings)

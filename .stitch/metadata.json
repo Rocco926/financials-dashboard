@@ -1,0 +1,80 @@
+{
+  "name": "projects/7116678432859564628",
+  "projectId": "7116678432859564628",
+  "title": "Financials Dashboard",
+  "visibility": "PRIVATE",
+  "createTime": "2026-04-07T13:04:56.749453Z",
+  "updateTime": "2026-04-07T13:04:56.749453Z",
+  "projectType": "PROJECT_DESIGN",
+  "origin": "STITCH",
+  "designTheme": {},
+  "screens": {
+    "index": {
+      "id": "bf3861b5f4964597ae833854fd201fbf",
+      "sourceScreen": "projects/7116678432859564628/screens/bf3861b5f4964597ae833854fd201fbf",
+      "width": 2560,
+      "height": 3650,
+      "deviceType": "DESKTOP",
+      "title": "Finance Dashboard"
+    },
+    "login": {
+      "id": "5f2cf69a89e74efc808f1bc71c5f50b8",
+      "sourceScreen": "projects/7116678432859564628/screens/5f2cf69a89e74efc808f1bc71c5f50b8",
+      "width": 780,
+      "height": 2022,
+      "deviceType": "MOBILE",
+      "title": "Login Page"
+    },
+    "transactions": {
+      "id": "2777e0ad05a7495daa7415ee3e785cb3",
+      "sourceScreen": "projects/7116678432859564628/screens/2777e0ad05a7495daa7415ee3e785cb3",
+      "width": 2560,
+      "height": 3200,
+      "deviceType": "DESKTOP",
+      "title": "Transactions Ledger"
+    },
+    "holdings": {
+      "id": "e92de96bd72044cab5fc60b01745b375",
+      "sourceScreen": "projects/7116678432859564628/screens/e92de96bd72044cab5fc60b01745b375",
+      "width": 2560,
+      "height": 2800,
+      "deviceType": "DESKTOP",
+      "title": "Holdings Ledger"
+    },
+    "budgets": {
+      "id": "6c9a8e66e2d343f5977f94b9adbd45ad",
+      "sourceScreen": "projects/7116678432859564628/screens/6c9a8e66e2d343f5977f94b9adbd45ad",
+      "width": 2560,
+      "height": 2600,
+      "deviceType": "DESKTOP",
+      "title": "Budgets Tracking"
+    },
+    "import": {
+      "id": "6e3c98b30ee743d4bab179560a546142",
+      "sourceScreen": "projects/7116678432859564628/screens/6e3c98b30ee743d4bab179560a546142",
+      "width": 2560,
+      "height": 2400,
+      "deviceType": "DESKTOP",
+      "title": "Import Transactions"
+    },
+    "import-history": {
+      "id": "61430f6107164b7fb21ae232da168457",
+      "sourceScreen": "projects/7116678432859564628/screens/61430f6107164b7fb21ae232da168457",
+      "width": 2560,
+      "height": 2200,
+      "deviceType": "DESKTOP",
+      "title": "Import History Audit"
+    },
+    "categorise": {
+      "id": "59ba1ed1507f4987889cb5ab4d578b59",
+      "sourceScreen": "projects/7116678432859564628/screens/59ba1ed1507f4987889cb5ab4d578b59",
+      "width": 2560,
+      "height": 3000,
+      "deviceType": "DESKTOP",
+      "title": "Bulk Categorise Merchants"
+    }
+  },
+  "metadata": {
+    "userRole": "OWNER"
+  }
+}

@@ -56,6 +56,7 @@ import { db } from '@/lib/db'
 import { accounts, transactions, importLog, holdings } from '@/lib/db'
 import { eq, and, isNotNull, desc } from 'drizzle-orm'
 import { parse } from '@finance/parsers'
+import { format as formatDate } from 'date-fns'
 import { z } from 'zod'
 import { categoriseBatch } from '@/lib/categorise'
 
@@ -213,7 +214,7 @@ export async function POST(request: NextRequest) {
               return {
                 externalId:  tx.externalId,
                 accountId,
-                date:        tx.date.toISOString().split('T')[0]!,
+                date:        formatDate(tx.date, 'yyyy-MM-dd'),
                 amount:      String(tx.amount),
                 description: tx.description,
                 // Use bank-provided merchant name if available, otherwise raw description

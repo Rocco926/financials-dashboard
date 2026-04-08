@@ -127,10 +127,26 @@ export function getPeriodDates(period: string): { from: string; to: string } {
       return { from: from.toISOString().split('T')[0]!, to: toStr }
     }
 
+    case '30days': {
+      const from = new Date(now)
+      from.setDate(from.getDate() - 30)
+      return { from: from.toISOString().split('T')[0]!, to: toStr }
+    }
+
     case '3months': {
       const from = new Date(now)
       from.setMonth(from.getMonth() - 3)
       return { from: from.toISOString().split('T')[0]!, to: toStr }
+    }
+
+    case '6months': {
+      const from = new Date(now)
+      from.setMonth(from.getMonth() - 6)
+      return { from: from.toISOString().split('T')[0]!, to: toStr }
+    }
+
+    case 'year': {
+      return { from: `${now.getFullYear()}-01-01`, to: toStr }
     }
 
     case '12months': {

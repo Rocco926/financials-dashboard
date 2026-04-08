@@ -17,15 +17,15 @@ export function Nav() {
   const pathname = usePathname()
 
   return (
-    <nav className="w-[220px] shrink-0 flex flex-col bg-[#FBFAF8] border-r border-[#E9E7E2]">
+    <nav className="w-[220px] shrink-0 flex flex-col bg-white m-3 mr-0 rounded-2xl shadow-ambient">
       {/* App title */}
-      <div className="px-4 pt-5 pb-3">
-        <p className="text-sm font-semibold text-[#37352F]">Finance</p>
-        <p className="text-[11px] text-[#ACABA8] mt-0.5">Personal dashboard</p>
+      <div className="px-5 pt-6 pb-4">
+        <p className="text-sm font-bold text-on-surface tracking-tight">The Ledger</p>
+        <p className="text-[10px] text-secondary mt-0.5 uppercase tracking-widest font-medium">Personal Finance</p>
       </div>
 
       {/* Nav links */}
-      <ul className="flex-1 px-2 space-y-px pt-1">
+      <ul className="flex-1 px-3 space-y-0.5">
         {links.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || (href !== '/' && pathname.startsWith(href))
           return (
@@ -33,15 +33,15 @@ export function Nav() {
               <Link
                 href={href}
                 className={cn(
-                  'flex items-center gap-2 py-1.5 px-2.5 text-sm rounded-md transition-colors',
+                  'flex items-center gap-2.5 py-2.5 px-3 text-sm rounded-full transition-all duration-200',
                   active
-                    ? 'bg-[#EDEBE7] text-[#37352F] font-medium'
-                    : 'text-[#787774] hover:bg-[#F1EFE9] hover:text-[#37352F]',
+                    ? 'bg-secondary-container text-on-surface font-semibold'
+                    : 'text-secondary hover:bg-surface-container-low hover:text-on-surface',
                 )}
               >
                 <Icon
-                  className={cn('size-[15px] shrink-0', active ? 'text-[#37352F]' : 'text-[#ACABA8]')}
-                  strokeWidth={1.5}
+                  className={cn('size-4 shrink-0', active ? 'text-on-surface' : 'text-secondary')}
+                  strokeWidth={active ? 2 : 1.5}
                 />
                 {label}
               </Link>
@@ -51,12 +51,12 @@ export function Nav() {
       </ul>
 
       {/* Sign out */}
-      <div className="px-2 pb-4 pt-2 border-t border-[#E9E7E2]">
+      <div className="px-3 pb-4 pt-2">
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
-          className="flex items-center gap-2 w-full py-1.5 px-2.5 text-sm text-[#ACABA8] hover:bg-[#F1EFE9] hover:text-[#787774] rounded-md transition-colors"
+          className="flex items-center gap-2.5 w-full py-2.5 px-3 text-sm text-secondary hover:bg-surface-container-low hover:text-on-surface rounded-full transition-all duration-200"
         >
-          <LogOut className="size-[15px] shrink-0" strokeWidth={1.5} />
+          <LogOut className="size-4 shrink-0 text-secondary" strokeWidth={1.5} />
           Sign out
         </button>
       </div>

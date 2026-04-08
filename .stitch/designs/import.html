@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface-variant": "#3e4942",
+                    "secondary-fixed-dim": "#cbc6bd",
+                    "tertiary-container": "#ff6f65",
+                    "inverse-surface": "#2f3130",
+                    "inverse-primary": "#77daa4",
+                    "tertiary": "#b02d29",
+                    "surface-dim": "#dbdad8",
+                    "on-tertiary-container": "#700008",
+                    "on-secondary-container": "#67645d",
+                    "surface-variant": "#e3e2e0",
+                    "surface-container": "#efeeec",
+                    "on-tertiary-fixed": "#410003",
+                    "on-error-container": "#93000a",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-container": "#003d25",
+                    "surface-container-low": "#f4f3f1",
+                    "error-container": "#ffdad6",
+                    "surface-bright": "#faf9f7",
+                    "on-primary": "#ffffff",
+                    "on-secondary-fixed": "#1d1c16",
+                    "surface-container-high": "#e9e8e6",
+                    "secondary-container": "#e7e2d9",
+                    "secondary": "#615e57",
+                    "surface-tint": "#006c44",
+                    "surface": "#faf9f7",
+                    "surface-container-highest": "#e3e2e0",
+                    "on-surface": "#1b1c1b",
+                    "inverse-on-surface": "#f2f1ee",
+                    "outline-variant": "#bdcabf",
+                    "primary": "#006c44",
+                    "primary-fixed": "#93f7bf",
+                    "on-secondary-fixed-variant": "#494740",
+                    "secondary-fixed": "#e7e2d9",
+                    "background": "#faf9f7",
+                    "on-primary-fixed": "#002112",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-fixed": "#ffdad6",
+                    "outline": "#6e7a71",
+                    "on-primary-fixed-variant": "#005232",
+                    "primary-container": "#4caf7d",
+                    "on-tertiary-fixed-variant": "#8e1215",
+                    "tertiary-fixed-dim": "#ffb4ac",
+                    "on-background": "#1b1c1b",
+                    "error": "#ba1a1a",
+                    "primary-fixed-dim": "#77daa4",
+                    "on-secondary": "#ffffff",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "2xl": "1rem",
+                    "3xl": "1.5rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bg-primary-gradient {
+            background: linear-gradient(135deg, #006c44 0%, #4caf7d 100%);
+        }
+    </style>
+</head>
+<body class="bg-[#faf9f7] text-on-surface antialiased">
+<!-- SideNavBar Shell -->
+<aside class="h-screen w-64 fixed left-0 top-0 border-r-0 bg-[#f4f3f1] dark:bg-stone-900/50 flex flex-col p-6 gap-8 z-50">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary-gradient flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-sm" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+</div>
+<div>
+<h1 class="text-2xl font-bold text-[#1b1c1b] dark:text-stone-100 tracking-tighter">The Ledger</h1>
+<p class="text-[10px] uppercase tracking-widest text-secondary font-semibold">Personal Curator</p>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 text-[#615e57] hover:bg-[#e9e8e6] transition-colors duration-200 rounded-full active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#615e57] hover:bg-[#e9e8e6] transition-colors duration-200 rounded-full active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-medium">Holdings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-[#F0EEE9] text-[#1b1c1b] font-semibold rounded-full active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-medium">Transactions</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#615e57] hover:bg-[#e9e8e6] transition-colors duration-200 rounded-full active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">savings</span>
+<span class="font-medium">Budgets</span>
+</a>
+</nav>
+<button class="bg-primary-gradient text-white font-semibold py-3 px-6 rounded-3xl active:scale-[0.98] transition-transform shadow-lg shadow-primary/20">
+            Import CSV
+        </button>
+<div class="mt-auto flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 text-[#615e57] hover:bg-[#e9e8e6] transition-colors duration-200 rounded-full" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-medium text-sm">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#615e57] hover:bg-[#e9e8e6] transition-colors duration-200 rounded-full" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-medium text-sm">Support</span>
+</a>
+</div>
+</aside>
+<!-- TopAppBar Shell -->
+<header class="sticky top-0 w-full z-40 bg-[#faf9f7]/80 backdrop-blur-xl flex items-center justify-between px-8 py-4 ml-64 shadow-[0_12px_40px_rgba(27,28,27,0.04)]">
+<div class="flex items-center gap-6">
+<h2 class="hidden md:block text-xl font-black text-[#1b1c1b] tracking-tight">Import Transactions</h2>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary">search</span>
+<input class="bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-sm w-64 focus:ring-2 focus:ring-primary/20 transition-all outline-none" placeholder="Search activities..." type="text"/>
+</div>
+<div class="flex items-center gap-4 text-secondary">
+<button class="hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 p-10 min-h-screen bg-[#EDECEA]">
+<div class="max-w-5xl mx-auto space-y-10">
+<!-- Header Section -->
+<div class="flex items-end justify-between px-2">
+<div>
+<h2 class="text-4xl font-extrabold text-[#1b1c1b] tracking-tighter">Import Transactions</h2>
+<p class="text-secondary mt-1 font-medium">Add your latest financial data from external sources.</p>
+</div>
+<a class="flex items-center gap-1 text-secondary font-medium hover:text-[#1b1c1b] transition-colors group" href="#">
+                    View History
+                    <span class="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_right_alt</span>
+</a>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-8 items-start">
+<!-- Left Column: Primary Upload Action -->
+<div class="col-span-12 lg:col-span-7 space-y-8">
+<!-- Upload Card -->
+<section class="bg-surface-container-lowest rounded-3xl p-8 shadow-[0_12px_40px_rgba(27,28,27,0.04)] border border-white/40">
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-xl font-bold text-on-surface tracking-tight">Upload CSV files</h3>
+<span class="material-symbols-outlined text-secondary text-xl">cloud_upload</span>
+</div>
+<div class="border-2 border-dashed border-[#bdcabf]/40 bg-[#f4f3f1] rounded-3xl p-12 flex flex-col items-center justify-center gap-4 group cursor-pointer hover:bg-surface-container-high transition-colors">
+<div class="w-16 h-16 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary-container group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'wght' 500;">upload_file</span>
+</div>
+<div class="text-center">
+<p class="text-[#1b1c1b] font-semibold text-lg">Drag &amp; drop CSV files here</p>
+<p class="text-[#615e57] text-sm mt-1">or <span class="text-primary font-bold">click to browse</span> your folders</p>
+</div>
+<p class="text-[#3e4942] text-xs font-medium px-3 py-1 bg-white/50 rounded-full">Supports NAB CSV export format</p>
+</div>
+<!-- Staged Files -->
+<div class="mt-8 space-y-3">
+<p class="text-xs font-bold text-secondary uppercase tracking-widest px-1">Selected Files (1)</p>
+<div class="bg-white border border-surface-container rounded-2xl p-4 flex items-center justify-between group shadow-sm">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined text-2xl">description</span>
+</div>
+<div>
+<p class="text-on-surface font-semibold text-sm">nab_statement_june.csv</p>
+<p class="text-secondary text-xs">42KB • Ready to import</p>
+</div>
+</div>
+<button class="w-8 h-8 rounded-full flex items-center justify-center text-secondary hover:bg-error/10 hover:text-error transition-all">
+<span class="material-symbols-outlined text-lg">close</span>
+</button>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Context & Metadata -->
+<div class="col-span-12 lg:col-span-5 space-y-8">
+<!-- Account Assignment Card -->
+<section class="bg-surface-container-lowest rounded-3xl p-8 shadow-[0_12px_40px_rgba(27,28,27,0.04)] border border-white/40">
+<label class="block text-xs font-bold text-secondary uppercase tracking-widest mb-4">Assign to account</label>
+<div class="relative mb-8">
+<select class="w-full appearance-none bg-[#f4f3f1] border-none rounded-2xl py-4 px-6 text-on-surface font-semibold cursor-pointer focus:ring-2 focus:ring-primary/10 outline-none">
+<option>NAB Everyday Account</option>
+<option>Visa Platinum</option>
+<option>Macquarie HISA</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-secondary">unfold_more</span>
+</div>
+<button class="w-full bg-primary-gradient text-white py-5 rounded-3xl font-bold text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                            Import Now
+                        </button>
+</section>
+<!-- How it Works Card -->
+<section class="bg-surface-container-lowest rounded-3xl p-8 shadow-[0_12px_40px_rgba(27,28,27,0.04)] border border-white/40 overflow-hidden relative">
+<div class="absolute -top-12 -right-12 w-32 h-32 bg-primary/5 rounded-full blur-2xl"></div>
+<h3 class="text-xl font-bold text-on-surface tracking-tight mb-8">How it works</h3>
+<div class="space-y-6">
+<div class="flex gap-4">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#4caf7d] text-white flex items-center justify-center font-bold text-sm">1</div>
+<div>
+<p class="text-on-surface font-semibold leading-snug">Export CSV from your bank</p>
+<p class="text-secondary text-sm mt-1">Download your monthly activity statement from internet banking.</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#4caf7d] text-white flex items-center justify-center font-bold text-sm">2</div>
+<div>
+<p class="text-on-surface font-semibold leading-snug">Upload here</p>
+<p class="text-secondary text-sm mt-1">Duplicates are automatically skipped. We scan for transaction IDs.</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#4caf7d] text-white flex items-center justify-center font-bold text-sm">3</div>
+<div>
+<p class="text-on-surface font-semibold leading-snug">Categorise</p>
+<p class="text-secondary text-sm mt-1">Review your transactions and apply tags or budget categories.</p>
+</div>
+</div>
+</div>
+<div class="mt-10 pt-6 border-t border-surface-container">
+<div class="flex items-start gap-3 p-4 bg-[#f4f3f1] rounded-2xl">
+<span class="material-symbols-outlined text-secondary text-lg">info</span>
+<p class="text-[#615e57] text-sm leading-relaxed">
+<span class="font-bold">Supports NAB format.</span> We are working hard to bring Macquarie, CommBank, and Westpac formats online soon.
+                                </p>
+</div>
+</div>
+</section>
+<!-- Preview Card (Editorial Touch) -->
+<div class="rounded-3xl overflow-hidden relative h-48 group">
+<img alt="Financial Organization" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" data-alt="close-up of fountain pen and leather-bound ledger on a rustic wooden table with soft morning sunlight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5PlQoVWqyLskQqzhi7KR04q4_37Xbk_Miwl_CfLlPQdlxYnoEqyfAwhsx4WcM6G1ddkKqVpgmEDupBmDQTGuwKxZ9j8kdOSRc9MwDz-iRceGMhTAmlwoVYlcvrx5tu5hh63OCrInz-Pyl4nOfWatLVlwE6IV-32uVNHJgK9eGqdL9dMYjtmEn8U6BfCBNwdo-GYd9x6MyrONwn0kxmV5zzsB3CeKobqabAoWFpItvqIK71ZCccAHZ-uuHnHEpMx9szZovdsM6Efs"/>
+<div class="absolute inset-0 bg-gradient-to-t from-on-surface/80 to-transparent flex flex-col justify-end p-6">
+<p class="text-white text-xs font-bold uppercase tracking-widest opacity-80">Security First</p>
+<p class="text-white font-medium text-sm leading-snug">Your data is encrypted end-to-end. We never store raw bank credentials.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Meta -->
+<footer class="pt-8 flex items-center justify-between text-secondary/60 text-xs font-medium px-4">
+<p>© 2024 The Ledger Personal Finance. All rights reserved.</p>
+<div class="flex items-center gap-6">
+<a class="hover:text-primary transition-colors" href="#">Data Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Export Logs</a>
+</div>
+</footer>
+</div>
+</main>
+</body></html>
