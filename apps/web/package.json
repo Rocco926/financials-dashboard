@@ -10,13 +10,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.87.0",
     "@finance/db": "workspace:*",
-    "drizzle-orm": "^0.45.2",
     "@finance/parsers": "workspace:*",
     "@finance/types": "workspace:*",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "drizzle-orm": "^0.45.2",
     "lucide-react": "^0.368.0",
     "next": "14.2.3",
     "next-auth": "^5.0.0-beta.19",

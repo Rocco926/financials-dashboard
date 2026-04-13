@@ -23,7 +23,6 @@
  *   id:            string (UUID)
  *   name:          string      — e.g. "Groceries"
  *   colour:        string      — hex colour e.g. "#f59e0b"
- *   monthlyBudget: string | null — numeric as string (Drizzle numeric type)
  *   isIncome:      boolean
  *   createdAt:     string      — ISO timestamp
  * }

@@ -41,6 +41,7 @@ import {
   date,
   jsonb,
   integer,
+  unique,
 } from 'drizzle-orm/pg-core'
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
@@ -154,14 +155,6 @@ export const categories = pgTable('categories', {
   colour: text('colour').notNull(),
 
   /**
-   * Optional monthly budget limit in AUD.
-   * When set, the budgets page will show spend vs budget progress.
-   * null means no budget has been configured for this category.
-   * Stored as numeric(12,2) — same precision as transaction amounts.
-   */
-  monthlyBudget: numeric('monthly_budget', { precision: 12, scale: 2 }),
-
-  /**
    * Whether this category represents income (true) or spending (false).
    * Income categories (e.g. "Salary", "Interest") should be excluded from
    * the spending breakdown charts on the dashboard.
@@ -184,6 +177,13 @@ export const categories = pgTable('categories', {
    * inflates reported expenses. The "Transfers & Savings" category uses this.
    */
   isTransfer: boolean('is_transfer').notNull().default(false),
+
+  /**
+   * Legacy monthly budget amount — kept to avoid a destructive migration.
+   * Budget amounts are now managed via the `budgets` table joined to categories.
+   * This column is no longer read or written by the application.
+   */
+  monthlyBudget: numeric('monthly_budget', { precision: 12, scale: 2 }),
 
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
@@ -552,13 +552,80 @@ export const categoryRules = pgTable('category_rules', {
   updatedAt:       timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
+// ─── budgets ──────────────────────────────────────────────────────────────────
+
+/**
+ * Monthly budget allocations per category.
+ *
+ * One row per (category, calendar month). The month column is always stored as
+ * the first day of the month (e.g. 2026-04-01 for April 2026).
+ *
+ * WHY A SEPARATE TABLE?
+ * ─────────────────────
+ * Storing budgets here (rather than a column on categories) lets us:
+ *   1. Track budget history month-by-month (different amounts in different months)
+ *   2. Delete a budget without touching the category record
+ *   3. Keep the categories table focused on classification metadata
+ *
+ * UNIQUE CONSTRAINT
+ * ──────────────────
+ * (category_id, month) is unique — one budget per category per calendar month.
+ * The POST /api/budgets route uses upsert semantics (ON CONFLICT DO UPDATE)
+ * so creating and updating a budget are the same call from the client's perspective.
+ */
+export const budgets = pgTable('budgets', {
+  id:         uuid('id').defaultRandom().primaryKey(),
+
+  /** The category this budget applies to. Cascade-deletes if the category is removed. */
+  categoryId: uuid('category_id')
+    .notNull()
+    .references(() => categories.id, { onDelete: 'cascade' }),
+
+  /** Budget amount in AUD for the given month. Always positive. */
+  amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
+
+  /**
+   * First day of the calendar month this budget applies to.
+   * Always stored as YYYY-MM-01 (e.g. "2026-04-01").
+   * Drizzle reads this back as a string.
+   */
+  month: date('month').notNull(),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  unique('budgets_category_month_unique').on(t.categoryId, t.month),
+])
+
+// ─── market_insights ──────────────────────────────────────────────────────────
+
+/**
+ * Cache for Claude-generated portfolio insight text.
+ *
+ * Single-user app — only ever one row. The holdings_hash column detects
+ * portfolio changes so the insight regenerates when composition shifts.
+ */
+export const marketInsights = pgTable('market_insights', {
+  id:            uuid('id').defaultRandom().primaryKey(),
+
+  /** The generated 2–3 sentence narrative paragraph. */
+  content:       text('content').notNull(),
+
+  /** SHA-256 hash of ticker+value pairs at generation time. */
+  holdingsHash:  text('holdings_hash').notNull(),
+
+  generatedAt:   timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 // ─── Inferred TypeScript types ────────────────────────────────────────────────
 // These give you fully-typed objects when querying with Drizzle.
 // Use the Select type for query results, Insert type for insert operations.
 
-export type Account     = typeof accounts.$inferSelect
-export type NewAccount  = typeof accounts.$inferInsert
-export type Category    = typeof categories.$inferSelect
-export type Transaction = typeof transactions.$inferSelect
+export type Account        = typeof accounts.$inferSelect
+export type NewAccount     = typeof accounts.$inferInsert
+export type Category       = typeof categories.$inferSelect
+export type Transaction    = typeof transactions.$inferSelect
 export type NewTransaction = typeof transactions.$inferInsert
-export type ImportLog   = typeof importLog.$inferSelect
+export type ImportLog      = typeof importLog.$inferSelect
+export type Budget         = typeof budgets.$inferSelect
+export type NewBudget      = typeof budgets.$inferInsert

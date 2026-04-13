@@ -7,7 +7,7 @@ import { DeleteButton } from './delete-button'
 import { ClearAccountButton } from './clear-account-button'
 import { TransactionFilters } from './transaction-filters'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight, Upload, Tags } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Tags } from 'lucide-react'
 
 interface PageProps {
   searchParams: {
@@ -110,22 +110,20 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
     <>
       {/* Page header */}
       <header className="flex justify-between items-center h-20 mb-8">
-        <h2 className="text-3xl font-extrabold tracking-tight text-on-surface">Transactions</h2>
-        <div className="flex items-center gap-6">
+        <div className="flex items-baseline gap-3">
+          <h2 className="text-3xl font-semibold tracking-[-0.02em] text-on-surface">Transactions</h2>
+          <span className="text-sm font-medium text-secondary tabular-nums bg-surface-container-low px-2.5 py-0.5 rounded-full">
+            {total.toLocaleString()}
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          <ClearAccountButton accounts={allAccounts} />
           <Link
             href="/transactions/categorise"
-            className="text-primary font-bold hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-3xl font-semibold text-sm hover:bg-primary-dim transition-all active:scale-95 shadow-ambient"
           >
-            Categorise →
-          </Link>
-          <ClearAccountButton accounts={allAccounts} />
-          <span className="text-sm text-secondary">{total.toLocaleString()} transactions</span>
-          <Link
-            href="/import"
-            className="flex items-center gap-1.5 text-sm font-medium text-on-surface bg-white border border-secondary-container px-3 py-1.5 hover:bg-surface-container-low transition-colors rounded-full shadow-ambient"
-          >
-            <Upload className="size-3.5" />
-            Import
+            <Tags className="size-4" />
+            Categorise
           </Link>
         </div>
       </header>
@@ -178,7 +176,7 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
                 </div>
 
                 {/* Description / merchant */}
-                <div className="text-sm font-semibold text-on-surface min-w-0">
+                <div className="text-sm font-medium text-on-surface min-w-0">
                   <p className="truncate">{tx.merchant ?? tx.description}</p>
                   {tx.merchant && tx.merchant !== tx.description && (
                     <p className="text-xs text-secondary truncate mt-0.5">{tx.description}</p>

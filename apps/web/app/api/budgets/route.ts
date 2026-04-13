@@ -1,25 +1,14 @@
 /**
- * GET /api/budgets
- *
- * Returns all non-income categories with their monthlyBudget and how much
- * was spent in the current calendar month.
- *
- * QUERY DESIGN
- * ────────────
- * Left-joins transactions so categories with zero spend still appear.
- * Filters to current month using DATE_TRUNC so the month boundary is exact
- * regardless of what timezone the server is in (Supabase uses UTC).
- * Only sums negative amounts (debits) — credits are ignored.
- *
- * RESPONSE
- * ────────
- * { data: Array<{ id, name, colour, monthlyBudget: number|null, spent: number }> }
+ * GET  /api/budgets — all non-income, non-transfer categories with budget + spend data
+ * POST /api/budgets — upsert a budget for a category for the current month
  */
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { db, categories, transactions } from '@/lib/db'
-import { eq, and, sql } from 'drizzle-orm'
-import { asc } from 'drizzle-orm'
+import { db, categories, transactions, budgets } from '@/lib/db'
+import { eq, and, sql, asc } from 'drizzle-orm'
+import { z } from 'zod'
+
+// ─── GET ──────────────────────────────────────────────────────────────────────
 
 export async function GET() {
   const session = await auth()
@@ -27,47 +16,93 @@ export async function GET() {
 
   const rows = await db
     .select({
-      id:            categories.id,
-      name:          categories.name,
-      colour:        categories.colour,
-      monthlyBudget: categories.monthlyBudget,
+      id:       categories.id,
+      name:     categories.name,
+      colour:   categories.colour,
+      budgetId: budgets.id,
+      amount:   budgets.amount,
       spent: sql<string>`
         COALESCE(
-          ABS(SUM(
+          SUM(
             CASE
               WHEN ${transactions.amount}::numeric < 0
-              THEN ${transactions.amount}::numeric
+                AND DATE_TRUNC('month', ${transactions.date}::date) = DATE_TRUNC('month', CURRENT_DATE)
+              THEN ABS(${transactions.amount}::numeric)
               ELSE 0
             END
-          )),
+          ),
           0
         )
       `,
     })
     .from(categories)
     .leftJoin(
-      transactions,
+      budgets,
       and(
-        eq(transactions.category, categories.name),
-        sql`DATE_TRUNC('month', ${transactions.date}::date) = DATE_TRUNC('month', CURRENT_DATE)`,
+        eq(budgets.categoryId, categories.id),
+        sql`${budgets.month} = DATE_TRUNC('month', CURRENT_DATE)::date`,
       ),
     )
-    .where(eq(categories.isIncome, false))
+    .leftJoin(transactions, eq(transactions.category, categories.name))
+    .where(and(eq(categories.isIncome, false), eq(categories.isTransfer, false)))
     .groupBy(
       categories.id,
       categories.name,
       categories.colour,
-      categories.monthlyBudget,
+      budgets.id,
+      budgets.amount,
     )
     .orderBy(asc(categories.name))
 
   const data = rows.map((r) => ({
-    id:            r.id,
-    name:          r.name,
-    colour:        r.colour,
-    monthlyBudget: r.monthlyBudget != null ? parseFloat(String(r.monthlyBudget)) : null,
-    spent:         parseFloat(r.spent),
+    id:           r.id,
+    budgetId:     r.budgetId ?? null,
+    name:         r.name,
+    colour:       r.colour,
+    monthlyBudget: r.amount != null ? parseFloat(String(r.amount)) : null,
+    spent:        parseFloat(r.spent),
   }))
 
   return NextResponse.json({ data })
+}
+
+// ─── POST ─────────────────────────────────────────────────────────────────────
+
+const postSchema = z.object({
+  categoryId: z.string().uuid(),
+  amount:     z.number().positive(),
+})
+
+export async function POST(request: NextRequest) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = await request.json().catch(() => null)
+  const parsed = postSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Invalid body', issues: parsed.error.issues },
+      { status: 400 },
+    )
+  }
+
+  const { categoryId, amount } = parsed.data
+
+  // First day of current month in YYYY-MM-DD format (server-side, UTC-safe)
+  const now   = new Date()
+  const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`
+
+  const [row] = await db
+    .insert(budgets)
+    .values({ categoryId, amount: String(amount), month })
+    .onConflictDoUpdate({
+      target:     [budgets.categoryId, budgets.month],
+      set: {
+        amount:    String(amount),
+        updatedAt: new Date(),
+      },
+    })
+    .returning()
+
+  return NextResponse.json({ data: row }, { status: 201 })
 }
