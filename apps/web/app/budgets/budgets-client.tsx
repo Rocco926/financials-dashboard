@@ -14,7 +14,7 @@ import { formatCurrency } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type Period = 'this_month' | '3_months' | 'all_time'
+export type Period = 'weekly' | 'this_month' | '3_months' | 'all_time'
 
 export type BudgetRow = {
   id:             string   // category id
@@ -27,9 +27,10 @@ export type BudgetRow = {
 }
 
 interface Props {
-  initialRows: BudgetRow[]
-  period:      Period
-  trendPct:    number | null
+  initialRows:   BudgetRow[]
+  period:        Period
+  trendPct:      number | null
+  weeksPerMonth: number
 }
 
 // ─── Category icon map ────────────────────────────────────────────────────────
@@ -98,20 +99,26 @@ function ProgressBar({ spent, budget }: { spent: number; budget: number }) {
 
 function BudgetEditor({
   row,
+  displayAmount,
+  toMonthly,
   onSave,
   onCancel,
 }: {
-  row:      BudgetRow
-  onSave:   (id: string, budgetId: string | null, value: number | null) => Promise<void>
-  onCancel: () => void
+  row:           BudgetRow
+  displayAmount: number | null
+  toMonthly:     (v: number) => number
+  onSave:        (id: string, budgetId: string | null, value: number | null) => Promise<void>
+  onCancel:      () => void
 }) {
-  const [value,  setValue]  = useState(row.monthlyBudget != null ? String(row.monthlyBudget) : '')
+  const [value,  setValue]  = useState(displayAmount != null ? String(Math.round(displayAmount)) : '')
   const [saving, setSaving] = useState(false)
 
   async function handleSave() {
     setSaving(true)
     const parsed = value.trim() === '' ? null : parseFloat(value)
-    await onSave(row.id, row.budgetId, parsed && parsed > 0 ? parsed : null)
+    // Convert display amount back to monthly before saving — toMonthly is a no-op in monthly view
+    const monthly = parsed && parsed > 0 ? toMonthly(parsed) : null
+    await onSave(row.id, row.budgetId, monthly)
     setSaving(false)
   }
 
@@ -155,12 +162,16 @@ function BudgetEditor({
 
 function AddBudgetModal({
   unbudgeted,
+  toMonthly,
+  frequencyLabel,
   onSave,
   onClose,
 }: {
-  unbudgeted: BudgetRow[]
-  onSave:     (categoryId: string, amount: number) => Promise<void>
-  onClose:    () => void
+  unbudgeted:     BudgetRow[]
+  toMonthly:      (v: number) => number
+  frequencyLabel: string
+  onSave:         (categoryId: string, amount: number) => Promise<void>
+  onClose:        () => void
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [categoryId, setCategoryId] = useState(unbudgeted[0]?.id ?? '')
@@ -177,7 +188,8 @@ function AddBudgetModal({
     const parsed = parseFloat(amount)
     if (!parsed || parsed <= 0 || !categoryId) return
     setSaving(true)
-    await onSave(categoryId, parsed)
+    // Convert from display frequency to monthly before saving
+    await onSave(categoryId, toMonthly(parsed))
     setSaving(false)
     onClose()
   }
@@ -219,7 +231,7 @@ function AddBudgetModal({
 
           <div>
             <label className="block text-[10px] font-semibold text-secondary uppercase tracking-widest mb-1.5">
-              Monthly amount
+              {frequencyLabel}
             </label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-sm">$</span>
@@ -261,6 +273,7 @@ function AddBudgetModal({
 // ─── Period tabs ──────────────────────────────────────────────────────────────
 
 const PERIODS: { key: Period; label: string }[] = [
+  { key: 'weekly',     label: 'Weekly' },
   { key: 'this_month', label: 'This month' },
   { key: '3_months',   label: '3 months' },
   { key: 'all_time',   label: 'All time' },
@@ -289,7 +302,16 @@ function PeriodTabs({ current }: { current: Period }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function BudgetsClient({ initialRows, period, trendPct }: Props) {
+export function BudgetsClient({ initialRows, period, trendPct, weeksPerMonth }: Props) {
+  // Convert a stored monthly budget to the display amount for the active period.
+  const displayBudget = (monthly: number) =>
+    period === 'weekly' ? monthly / weeksPerMonth : monthly
+
+  // Convert a display-frequency amount back to monthly for storage.
+  const toMonthly = (v: number) =>
+    period === 'weekly' ? v * weeksPerMonth : v
+
+  const frequencyLabel = period === 'weekly' ? 'Weekly amount' : 'Monthly amount'
   const [rows,              setRows]              = useState<BudgetRow[]>(initialRows)
   const [editingId,         setEditingId]         = useState<string | null>(null)
   const [sortByUtilization, setSortByUtilization] = useState(false)
@@ -351,13 +373,15 @@ export function BudgetsClient({ initialRows, period, trendPct }: Props) {
 
   const sortedWithBudget = sortByUtilization
     ? [...withBudget].sort((a, b) => {
-        const aUtil = a.monthlyBudget! > 0 ? a.spent / a.monthlyBudget! : 0
-        const bUtil = b.monthlyBudget! > 0 ? b.spent / b.monthlyBudget! : 0
+        const aBudget = displayBudget(a.monthlyBudget!)
+        const bBudget = displayBudget(b.monthlyBudget!)
+        const aUtil = aBudget > 0 ? a.spent / aBudget : 0
+        const bUtil = bBudget > 0 ? b.spent / bBudget : 0
         return bUtil - aUtil
       })
     : withBudget
 
-  const totalBudgeted = withBudget.reduce((s, r) => s + r.monthlyBudget!, 0)
+  const totalBudgeted = withBudget.reduce((s, r) => s + displayBudget(r.monthlyBudget!), 0)
   const totalSpent    = withBudget.reduce((s, r) => s + r.spent, 0)
   const remaining     = totalBudgeted - totalSpent
 
@@ -385,7 +409,7 @@ export function BudgetsClient({ initialRows, period, trendPct }: Props) {
 
           {/* Total budgeted */}
           <div className="bg-white p-5 rounded-2xl shadow-ambient">
-            <p className="text-[10px] font-semibold text-secondary uppercase tracking-widest mb-3">Total budgeted</p>
+            <p className="text-[10px] font-semibold text-secondary uppercase tracking-widest mb-3">{period === 'weekly' ? 'Weekly budget' : 'Total budgeted'}</p>
             <h3 className="text-2xl font-bold text-on-surface tabular-nums">
               {formatCurrency(totalBudgeted)}
             </h3>
@@ -396,7 +420,7 @@ export function BudgetsClient({ initialRows, period, trendPct }: Props) {
 
           {/* Total spent */}
           <div className="bg-white p-5 rounded-2xl shadow-ambient">
-            <p className="text-[10px] font-semibold text-secondary uppercase tracking-widest mb-3">Total spent</p>
+            <p className="text-[10px] font-semibold text-secondary uppercase tracking-widest mb-3">{period === 'weekly' ? 'Spent this week' : 'Total spent'}</p>
             <h3 className="text-2xl font-bold text-tertiary tabular-nums">
               {formatCurrency(totalSpent)}
             </h3>
@@ -413,7 +437,7 @@ export function BudgetsClient({ initialRows, period, trendPct }: Props) {
 
           {/* Remaining */}
           <div className="bg-white p-5 rounded-2xl shadow-ambient">
-            <p className="text-[10px] font-semibold text-secondary uppercase tracking-widest mb-3">Remaining</p>
+            <p className="text-[10px] font-semibold text-secondary uppercase tracking-widest mb-3">{period === 'weekly' ? 'Remaining this week' : 'Remaining'}</p>
             <h3 className={`text-2xl font-bold tabular-nums ${remaining >= 0 ? 'text-primary' : 'text-tertiary'}`}>
               {remaining >= 0 ? '' : '-'}{formatCurrency(Math.abs(remaining))}
             </h3>
@@ -434,7 +458,7 @@ export function BudgetsClient({ initialRows, period, trendPct }: Props) {
       {withBudget.length > 0 && (
         <div className="bg-white rounded-2xl shadow-ambient p-6 mb-6">
           <div className="mb-6 flex justify-between items-center">
-            <h4 className="text-[10px] font-bold text-secondary uppercase tracking-widest">Monthly Budgets</h4>
+            <h4 className="text-[10px] font-bold text-secondary uppercase tracking-widest">{period === 'weekly' ? 'Weekly Budgets' : 'Monthly Budgets'}</h4>
             <button
               onClick={() => setSortByUtilization((s) => !s)}
               className={`flex items-center gap-1 text-[10px] font-medium transition-colors ${
@@ -448,7 +472,8 @@ export function BudgetsClient({ initialRows, period, trendPct }: Props) {
 
           <div className="space-y-5">
             {sortedWithBudget.map((row) => {
-              const over      = row.spent > row.monthlyBudget!
+              const budget    = displayBudget(row.monthlyBudget!)
+              const over      = row.spent > budget
               const isEditing = editingId === row.id
 
               return (
@@ -473,6 +498,8 @@ export function BudgetsClient({ initialRows, period, trendPct }: Props) {
                       {isEditing ? (
                         <BudgetEditor
                           row={row}
+                          displayAmount={budget}
+                          toMonthly={toMonthly}
                           onSave={handleSave}
                           onCancel={() => setEditingId(null)}
                         />
@@ -483,7 +510,7 @@ export function BudgetsClient({ initialRows, period, trendPct }: Props) {
                               {formatCurrency(row.spent)}
                             </span>
                             {' of '}
-                            {formatCurrency(row.monthlyBudget!)}
+                            {formatCurrency(budget)}
                           </span>
                           <button
                             onClick={() => setEditingId(row.id)}
@@ -495,7 +522,7 @@ export function BudgetsClient({ initialRows, period, trendPct }: Props) {
                         </div>
                       )}
                     </div>
-                    <ProgressBar spent={row.spent} budget={row.monthlyBudget!} />
+                    <ProgressBar spent={row.spent} budget={budget} />
                   </div>
 
                 </div>
@@ -532,6 +559,8 @@ export function BudgetsClient({ initialRows, period, trendPct }: Props) {
                     {isEditing ? (
                       <BudgetEditor
                         row={row}
+                        displayAmount={null}
+                        toMonthly={toMonthly}
                         onSave={handleSave}
                         onCancel={() => setEditingId(null)}
                       />
@@ -565,6 +594,8 @@ export function BudgetsClient({ initialRows, period, trendPct }: Props) {
       {showModal && withoutBudget.length > 0 && (
         <AddBudgetModal
           unbudgeted={withoutBudget}
+          toMonthly={toMonthly}
+          frequencyLabel={frequencyLabel}
           onSave={createBudget}
           onClose={() => setShowModal(false)}
         />

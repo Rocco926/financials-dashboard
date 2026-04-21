@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, List, Target, Wallet, LogOut, ChevronDown } from 'lucide-react'
+import { LayoutDashboard, List, Target, Wallet, LogOut, ChevronDown, BarChart2, RefreshCw, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { signOut } from 'next-auth/react'
 
@@ -12,7 +12,10 @@ const topLinks = [
 ]
 
 const bottomLinks = [
-  { href: '/budgets', label: 'Budgets', icon: Target },
+  { href: '/budgets',       label: 'Budgets',    icon: Target        },
+  { href: '/analytics',     label: 'Analytics',  icon: BarChart2     },
+  { href: '/subscriptions', label: 'Recurring',  icon: RefreshCw     },
+  { href: '/anomalies',     label: 'Anomalies',  icon: AlertTriangle },
 ]
 
 const transactionSubItems = [

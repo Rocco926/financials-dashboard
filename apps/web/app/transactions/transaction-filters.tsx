@@ -60,10 +60,10 @@ export function TransactionFilters({ accounts, categories, current, hasFilters }
       <input
         name="search"
         type="search"
-        placeholder="Search…"
+        placeholder="Search merchant, notes, category…"
         defaultValue={current.search}
         onChange={(e) => applyDebounced({ search: e.target.value })}
-        className={`${inputCls} w-44`}
+        className={`${inputCls} w-64`}
       />
       <select
         name="accountId"

@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
   const [updated] = await Promise.all([
     db
       .update(transactions)
-      .set({ category })
+      .set({ category, categorySource: 'user' })
       .where(
         and(
           sql`upper(trim(${transactions.description})) = ${pattern}`,

@@ -1,10 +1,12 @@
 import { db } from '@/lib/db'
-import { transactions, accounts, categories, holdings, holdingPriceCache, holdingSnapshots } from '@/lib/db'
+import { transactions, accounts, categories, holdings, holdingPriceCache, holdingSnapshots, financialSummaries } from '@/lib/db'
 import { eq, and, gte, lte, desc, asc, sql, inArray } from 'drizzle-orm'
 import { getLiveBalances } from '@/lib/get-live-balances'
 import { MonthlyChart } from '@/components/monthly-chart'
 import { CategoryChart } from '@/components/category-chart'
 import { NetWorthChart } from '@/components/net-worth-chart'
+import { SavingsRateChart } from '@/components/savings-rate-chart'
+import { MonthlySummary } from '@/components/monthly-summary'
 import { PeriodSelector } from '@/components/period-selector'
 import { Suspense } from 'react'
 import { formatCurrency, formatDate, getPeriodDates } from '@/lib/utils'
@@ -12,7 +14,8 @@ import Link from 'next/link'
 import { ArrowUp, ArrowDown, Percent, ArrowRight, Plus } from 'lucide-react'
 
 interface DashboardProps {
-  searchParams: { period?: string; from?: string; to?: string }
+  // Next.js 15: searchParams is a Promise in Server Components
+  searchParams: Promise<{ period?: string; from?: string; to?: string }>
 }
 
 /**
@@ -109,7 +112,11 @@ async function getDashboardData(from: string, to: string) {
   `)
 
   const monthlyData = (monthlyRaw as unknown as Array<{ month: string; income: string; expenses: string }>).map(
-    (r) => ({ month: r.month, income: parseFloat(r.income), expenses: parseFloat(r.expenses) }),
+    (r) => {
+      const income   = parseFloat(r.income)
+      const expenses = parseFloat(r.expenses)
+      return { month: r.month, income, expenses, net: income - expenses }
+    },
   )
 
   // ── Category spending chart ───────────────────────────────────────────────────
@@ -158,21 +165,38 @@ async function getDashboardData(from: string, to: string) {
   return { income, expenses, net: income + expenses, savingsRate, monthlyData, categoryData, recent }
 }
 
-export default async function DashboardPage({ searchParams }: DashboardProps) {
-  const period = searchParams.period ?? 'month'
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
 
-  const { from, to } = period === 'custom' && searchParams.from && searchParams.to
-    ? { from: searchParams.from, to: searchParams.to }
+export default async function DashboardPage({ searchParams }: DashboardProps) {
+  const params = await searchParams
+  const period = params.period ?? 'month'
+
+  const customValid =
+    period === 'custom' &&
+    params.from && DATE_REGEX.test(params.from) &&
+    params.to   && DATE_REGEX.test(params.to)
+
+  const { from, to } = customValid
+    ? { from: params.from!, to: params.to! }
     : getPeriodDates(period)
+
+  const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
+  const currentMonthFirst = `${currentMonth}-01`
 
   const [
     { income, expenses, net, savingsRate, monthlyData, categoryData, recent },
     netWorth,
     snapshots,
+    summaryRow,
   ] = await Promise.all([
     getDashboardData(from, to),
     getNetWorth(),
     getRecentSnapshots(),
+    db.select({ content: financialSummaries.content })
+      .from(financialSummaries)
+      .where(eq(financialSummaries.month, currentMonthFirst))
+      .limit(1)
+      .then((rows) => rows[0] ?? null),
   ])
 
   return (
@@ -288,6 +312,37 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
           <CategoryChart data={categoryData} />
         </div>
       </div>
+
+      {/* Savings rate chart */}
+      {monthlyData.length > 0 && (() => {
+        const savingsRateData = monthlyData.map((d) => ({
+          month: d.month,
+          rate:  d.income > 0 ? Math.round(((d.income - d.expenses) / d.income) * 100) : null,
+        }))
+        const currentRate = savingsRateData.at(-1)?.rate ?? null
+        return (
+          <section className="bg-white p-8 rounded-[24px] shadow-ambient mb-8">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h4 className="text-lg font-semibold text-on-surface">Savings rate</h4>
+                <p className="text-sm text-secondary mt-0.5">Percentage of income saved each month</p>
+              </div>
+              {currentRate !== null && (
+                <div className="text-right">
+                  <div className={`text-3xl font-bold tabular-nums ${currentRate >= 20 ? 'text-primary' : 'text-tertiary'}`}>
+                    {currentRate}%
+                  </div>
+                  <p className="text-xs text-secondary mt-0.5">this month</p>
+                </div>
+              )}
+            </div>
+            <SavingsRateChart data={savingsRateData} />
+          </section>
+        )
+      })()}
+
+      {/* Monthly AI summary */}
+      <MonthlySummary month={currentMonth} initialContent={summaryRow?.content ?? null} />
 
       {/* Recent transactions */}
       <section className="bg-white p-8 rounded-[24px] shadow-ambient">

@@ -79,20 +79,39 @@ interface PortfolioStats {
 }
 
 async function computeStats(): Promise<PortfolioStats> {
-  const rows = await db.select().from(holdings)
+  // Column-scoped select — only fetch the fields needed for stats calculation
+  const rows = await db
+    .select({
+      id:             holdings.id,
+      name:           holdings.name,
+      type:           holdings.type,
+      ticker:         holdings.ticker,
+      units:          holdings.units,
+      avgCostPerUnit: holdings.avgCostPerUnit,
+      manualBalance:  holdings.manualBalance,
+    })
+    .from(holdings)
 
   const tickers = rows
     .filter((h) => (h.type === 'etf' || h.type === 'stock') && h.ticker)
     .map((h) => h.ticker as string)
 
-  let priceMap: Record<string, number> = {}
+  // Single batch query for price + changePct — map carries both to avoid N+1 in the loop
+  const priceMap: Record<string, { price: number; changePct: number | null }> = {}
   if (tickers.length > 0) {
     const cached = await db
-      .select({ ticker: holdingPriceCache.ticker, price: holdingPriceCache.price, changePct: holdingPriceCache.changePct })
+      .select({
+        ticker:    holdingPriceCache.ticker,
+        price:     holdingPriceCache.price,
+        changePct: holdingPriceCache.changePct,
+      })
       .from(holdingPriceCache)
       .where(inArray(holdingPriceCache.ticker, tickers))
     for (const r of cached) {
-      priceMap[r.ticker] = parseFloat(String(r.price))
+      priceMap[r.ticker] = {
+        price:     parseFloat(String(r.price)),
+        changePct: r.changePct != null ? parseFloat(String(r.changePct)) : null,
+      }
     }
   }
 
@@ -106,13 +125,13 @@ async function computeStats(): Promise<PortfolioStats> {
   const hashParts: string[] = []
 
   for (const h of rows) {
-    const units    = h.units    != null ? parseFloat(String(h.units))    : null
-    const avgCost  = h.avgCostPerUnit != null ? parseFloat(String(h.avgCostPerUnit)) : null
-    const manual   = h.manualBalance != null ? parseFloat(String(h.manualBalance)) : null
+    const units   = h.units           != null ? parseFloat(String(h.units))           : null
+    const avgCost = h.avgCostPerUnit   != null ? parseFloat(String(h.avgCostPerUnit))  : null
+    const manual  = h.manualBalance    != null ? parseFloat(String(h.manualBalance))   : null
 
     let currentValue: number | null = null
     if ((h.type === 'etf' || h.type === 'stock') && units != null) {
-      const price = h.ticker ? (priceMap[h.ticker] ?? avgCost) : avgCost
+      const price = h.ticker ? (priceMap[h.ticker]?.price ?? avgCost) : avgCost
       currentValue = price != null ? units * price : null
     } else {
       currentValue = manual
@@ -129,13 +148,9 @@ async function computeStats(): Promise<PortfolioStats> {
       cashValue += currentValue
     }
 
-    // Track top performer by daily changePct
+    // Top performer: read changePct from priceMap — no extra DB query needed
     if (h.ticker && (h.type === 'etf' || h.type === 'stock')) {
-      const cached = await db
-        .select({ changePct: holdingPriceCache.changePct })
-        .from(holdingPriceCache)
-        .where(inArray(holdingPriceCache.ticker, [h.ticker]))
-      const changePct = cached[0]?.changePct != null ? parseFloat(String(cached[0].changePct)) : null
+      const changePct = priceMap[h.ticker]?.changePct ?? null
       if (changePct != null && (topPerformer == null || changePct > topPerformer.changePct)) {
         topPerformer = { name: h.name, ticker: h.ticker, changePct }
       }
@@ -247,12 +262,15 @@ async function getOrGenerate(forceRefresh: boolean): Promise<{ content: string; 
   // Generate
   const content = (await generateWithClaude(stats, indices)) ?? buildFallback(stats, indices)
 
-  // Upsert (delete old + insert new — single-row table)
-  await db.delete(marketInsights)
-  await db.insert(marketInsights).values({
-    content,
-    holdingsHash: stats.holdingsHash,
-    generatedAt:  new Date(),
+  // Atomic upsert: delete + insert in one transaction so the table is never
+  // momentarily empty (which would cause a concurrent GET to regenerate).
+  await db.transaction(async (tx) => {
+    await tx.delete(marketInsights)
+    await tx.insert(marketInsights).values({
+      content,
+      holdingsHash: stats.holdingsHash,
+      generatedAt:  new Date(),
+    })
   })
 
   return { content, fresh: true }

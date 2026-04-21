@@ -285,6 +285,19 @@ export const transactions = pgTable('transactions', {
   notes: text('notes'),
 
   /**
+   * How the category was assigned.
+   *   'claude'  — Claude Haiku classified it during import or retroactive batch
+   *   'keyword' — static keyword map matched (lib/categorise.ts step 3)
+   *   'bank'    — bank-provided category used (NAB nab2 step 2)
+   *   'user'    — user manually set or confirmed via the UI
+   *   null      — pre-existing row or not yet categorised
+   *
+   * Used by the review queue on /transactions/categorise to surface
+   * auto-assigned categories the user hasn't yet confirmed.
+   */
+  categorySource: text('category_source'),
+
+  /**
    * Whether money moved in (credit) or out (debit).
    * Derived from the sign of amount and stored for query convenience.
    * credit = amount > 0, debit = amount < 0.
@@ -616,6 +629,42 @@ export const marketInsights = pgTable('market_insights', {
 
   generatedAt:   timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+// ─── financial_summaries ──────────────────────────────────────────────────────
+
+/**
+ * Cache for Claude-generated monthly financial summary text.
+ *
+ * One row per calendar month (stored as first day: "2026-04-01").
+ * The dataHash column invalidates the cache if the underlying transaction
+ * totals change (e.g. user imports more data for that month).
+ *
+ * SINGLE-USER DESIGN
+ * ──────────────────
+ * Only one summary per month. If the hash changes (new data imported), the
+ * POST /api/summaries endpoint overwrites the row via upsert.
+ */
+export const financialSummaries = pgTable('financial_summaries', {
+  id:          uuid('id').defaultRandom().primaryKey(),
+
+  /** First day of the calendar month this summary covers. e.g. "2026-04-01" */
+  month:       date('month').notNull().unique(),
+
+  /** Claude-generated narrative summary for the month. */
+  content:     text('content').notNull(),
+
+  /**
+   * SHA-256 hash of (income, expenses, topCategories) at generation time.
+   * When the hash differs from the current computed hash, a new summary
+   * should be generated.
+   */
+  dataHash:    text('data_hash').notNull(),
+
+  generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export type FinancialSummary    = typeof financialSummaries.$inferSelect
+export type NewFinancialSummary = typeof financialSummaries.$inferInsert
 
 // ─── Inferred TypeScript types ────────────────────────────────────────────────
 // These give you fully-typed objects when querying with Drizzle.

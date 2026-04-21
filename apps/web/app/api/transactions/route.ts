@@ -159,14 +159,15 @@ export async function DELETE(request: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const accountId = request.nextUrl.searchParams.get('accountId')
-  if (!accountId) {
-    return NextResponse.json({ error: 'accountId is required' }, { status: 400 })
+  const accountIdRaw = request.nextUrl.searchParams.get('accountId')
+  const accountId = z.string().uuid().safeParse(accountIdRaw)
+  if (!accountId.success) {
+    return NextResponse.json({ error: 'accountId must be a valid UUID' }, { status: 400 })
   }
 
   const deleted = await db
     .delete(transactions)
-    .where(eq(transactions.accountId, accountId))
+    .where(eq(transactions.accountId, accountId.data))
     .returning({ id: transactions.id })
 
   return NextResponse.json({ deleted: deleted.length })

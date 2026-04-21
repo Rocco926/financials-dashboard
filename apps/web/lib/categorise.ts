@@ -1,24 +1,27 @@
 /**
- * Transaction auto-categorisation — Approach A (keyword rules + learning).
+ * Transaction auto-categorisation — full pipeline.
  *
  * PIPELINE (in priority order)
  * ─────────────────────────────
  * 1. category_rules table lookup  — user corrections always win
  * 2. Bank-provided category       — NAB nab2 exports include a Category column
  * 3. Static keyword map           — hardcoded patterns for common AU merchants
- * 4. null                         — uncategorised; user sets it manually later
+ * 4. Claude Haiku classification  — batch API call for remaining unknowns
+ * null                            — truly unknown; user sets it manually later
  *
- * TODO: Approach B — Claude API classification
- *   After the keyword map (step 3), batch any still-uncategorised descriptions
- *   to claude-haiku-4-5 for classification. See README.md § Auto-categorisation
- *   for the full plan. Requires ANTHROPIC_API_KEY in the environment.
+ * SOURCE TRACKING
+ * ───────────────
+ * Each result carries a `categorySource` field:
+ *   'user'    — matched a rule from category_rules (user-confirmed)
+ *   'bank'    — bank-provided category (step 2)
+ *   'keyword' — static keyword map (step 3)
+ *   'claude'  — Claude Haiku classification (step 4)
+ *   null      — uncategorised
  *
  * NORMALISATION
  * ─────────────
  * All description lookups use the same normalisation: uppercase + trim.
  * The category_rules table stores patterns in this normalised form.
- * This ensures "Woolworths Metro Sydney" and "WOOLWORTHS METRO SYDNEY" both
- * match the same rule.
  *
  * KEYWORD MAP DESIGN
  * ──────────────────
@@ -33,6 +36,7 @@ import { db } from '@/lib/db'
 import { categoryRules } from '@/lib/db'
 import { inArray } from 'drizzle-orm'
 import type { ParsedTransaction } from '@finance/types'
+import Anthropic from '@anthropic-ai/sdk'
 
 // ─── Keyword map ──────────────────────────────────────────────────────────────
 // [substring to match in normalised description, category name]
@@ -332,7 +336,6 @@ const KEYWORD_MAP: [string, string][] = [
   ['JB HI-FI',         'Shopping'],
   ['THE GOOD GUYS',    'Shopping'],
   ['HARVEY NORMAN',    'Shopping'],
-  ['BUNNINGS',         'Shopping'],
   ['IKEA',             'Shopping'],
   ['OFFICEWORKS',      'Shopping'],
   ['AMAZON',           'Shopping'],
@@ -428,27 +431,106 @@ function matchKeyword(normalisedDescription: string): string | null {
   return null
 }
 
+// ─── Claude Haiku classification ──────────────────────────────────────────────
+
+/**
+ * Sends a batch of unique normalised descriptions to Claude Haiku and asks it
+ * to assign each one to the closest category from the provided list.
+ *
+ * Returns a Map from normalised description → category name (or null if Claude
+ * couldn't classify it or if the response couldn't be parsed).
+ *
+ * Failures are silent — if this throws or returns null, the caller treats the
+ * affected transactions as uncategorised.
+ *
+ * PROMPT DESIGN
+ * ─────────────
+ * We pass the full closed list of valid category names so Claude can only
+ * return values we know exist. We ask for JSON output and validate each entry
+ * against the known set before using it — unknown strings are discarded.
+ */
+export async function classifyWithClaude(
+  descriptions: string[],
+  knownCategories: string[],
+): Promise<Map<string, string | null>> {
+  const result = new Map<string, string | null>()
+  if (descriptions.length === 0) return result
+
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) return result
+
+  const categoryList = knownCategories.join(', ')
+
+  // Chunk to avoid token limits — 100 descriptions per call is conservative
+  const client = new Anthropic({ apiKey })
+  const CHUNK_SIZE = 100
+  for (let i = 0; i < descriptions.length; i += CHUNK_SIZE) {
+    const chunk = descriptions.slice(i, i + CHUNK_SIZE)
+    try {
+      const msg = await client.messages.create({
+        model:      'claude-haiku-4-5',
+        max_tokens: 1024,
+        system: `You are a bank transaction categoriser for Australian personal finance.
+Given a list of bank transaction descriptions, assign each one to the most appropriate category from the provided list.
+If no category fits, use null.
+Return ONLY a valid JSON object mapping each description to a category name or null. No explanation, no markdown.`,
+        messages: [{
+          role:    'user',
+          content: `Categories: ${categoryList}\n\nDescriptions:\n${chunk.map((d, idx) => `${idx + 1}. ${d}`).join('\n')}\n\nReturn JSON: {"description": "category" | null, ...}`,
+        }],
+      })
+
+      const text = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : null
+      if (!text) continue
+
+      // Strip markdown code fences if present
+      const json = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+      const parsed: Record<string, string | null> = JSON.parse(json)
+      const knownSet = new Set(knownCategories)
+
+      for (const desc of chunk) {
+        const suggestion = parsed[desc] ?? null
+        // Only accept exact matches against the known category list
+        result.set(desc, suggestion && knownSet.has(suggestion) ? suggestion : null)
+      }
+    } catch {
+      // On any error, leave this chunk's descriptions as null — non-fatal
+      for (const desc of chunk) {
+        result.set(desc, null)
+      }
+    }
+  }
+
+  return result
+}
+
 // ─── Main categorise function ─────────────────────────────────────────────────
 
 export interface CategorisedTransaction {
-  category:   string | null
-  merchant:   string | null  // cleaned merchant name (from bank or description)
+  category:       string | null
+  merchant:       string | null  // cleaned merchant name (from bank or description)
+  categorySource: 'user' | 'bank' | 'keyword' | 'claude' | null
 }
 
 /**
- * Categorises a batch of parsed transactions using the 3-step pipeline:
+ * Categorises a batch of parsed transactions using the 4-step pipeline:
  *   1. category_rules table (user corrections — always wins)
  *   2. Bank-provided category (NAB nab2 only)
  *   3. Static keyword map
+ *   4. Claude Haiku classification (batch, for any remaining unknowns)
  *
- * Returns a Map from externalId → { category, merchant } so the import route
- * can apply results without re-traversing the array.
+ * Returns a Map from externalId → { category, merchant, categorySource } so
+ * the import route can apply results without re-traversing the array.
  *
  * Failures in this function must not abort the import. The caller should
  * wrap this in a try/catch and fall back to null categories if it throws.
+ *
+ * The `knownCategories` param must be the current list of category names from
+ * the DB (passed in so this function doesn't need to query it itself).
  */
 export async function categoriseBatch(
   transactions: ParsedTransaction[],
+  knownCategories: string[] = [],
 ): Promise<Map<string, CategorisedTransaction>> {
   const results = new Map<string, CategorisedTransaction>()
 
@@ -466,15 +548,18 @@ export async function categoriseBatch(
   const rulesMap = new Map(rulesRows.map((r) => [r.merchantPattern, r.category]))
 
   // ── Steps 2–3: Per-transaction fallthrough ──────────────────────────────────
+  const uncategorisedIds: string[] = []
+
   for (const tx of transactions) {
     const norm = normalise(tx.description)
 
-    // Step 1: learned rule
+    // Step 1: learned rule (source = 'user' — these are user-confirmed patterns)
     const ruleCategory = rulesMap.get(norm) ?? null
     if (ruleCategory) {
       results.set(tx.externalId, {
-        category: ruleCategory,
-        merchant: tx.merchantName ?? null,
+        category:       ruleCategory,
+        merchant:       tx.merchantName ?? null,
+        categorySource: 'user',
       })
       continue
     }
@@ -484,8 +569,9 @@ export async function categoriseBatch(
       const mapped = NAB_CATEGORY_MAP[tx.suggestedCategory] ?? null
       if (mapped) {
         results.set(tx.externalId, {
-          category: mapped,
-          merchant: tx.merchantName ?? null,
+          category:       mapped,
+          merchant:       tx.merchantName ?? null,
+          categorySource: 'bank',
         })
         continue
       }
@@ -493,10 +579,44 @@ export async function categoriseBatch(
 
     // Step 3: keyword map
     const keywordCategory = matchKeyword(norm)
+    if (keywordCategory) {
+      results.set(tx.externalId, {
+        category:       keywordCategory,
+        merchant:       tx.merchantName ?? null,
+        categorySource: 'keyword',
+      })
+      continue
+    }
+
+    // Still uncategorised — queue for Claude (step 4)
     results.set(tx.externalId, {
-      category: keywordCategory,
-      merchant: tx.merchantName ?? null,
+      category:       null,
+      merchant:       tx.merchantName ?? null,
+      categorySource: null,
     })
+    uncategorisedIds.push(tx.externalId)
+  }
+
+  // ── Step 4: Claude Haiku batch classification ────────────────────────────────
+  if (uncategorisedIds.length > 0 && knownCategories.length > 0) {
+    // Collect unique normalised descriptions for uncategorised transactions
+    const uncategorisedTxs = transactions.filter(tx => uncategorisedIds.includes(tx.externalId))
+    const uniqueDescs = [...new Set(uncategorisedTxs.map(tx => normalise(tx.description)))]
+
+    const claudeMap = await classifyWithClaude(uniqueDescs, knownCategories)
+
+    for (const tx of uncategorisedTxs) {
+      const norm = normalise(tx.description)
+      const claudeCategory = claudeMap.get(norm) ?? null
+      if (claudeCategory) {
+        results.set(tx.externalId, {
+          category:       claudeCategory,
+          merchant:       tx.merchantName ?? null,
+          categorySource: 'claude',
+        })
+      }
+      // null Claude result leaves the transaction as { category: null, source: null }
+    }
   }
 
   return results

@@ -1,29 +1,33 @@
 import { db } from '@/lib/db'
 import { transactions, accounts, categories } from '@/lib/db'
-import { and, eq, gte, lte, ilike, isNull, desc, count, sql } from 'drizzle-orm'
+import { and, eq, gte, lte, ilike, isNull, or, desc, count, sql } from 'drizzle-orm'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { CategoryEditor } from './category-editor'
 import { DeleteButton } from './delete-button'
 import { ClearAccountButton } from './clear-account-button'
 import { TransactionFilters } from './transaction-filters'
+import { ExportButton } from './export-button'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Tags } from 'lucide-react'
 
+type SearchParams = {
+  page?: string
+  accountId?: string
+  from?: string
+  to?: string
+  category?: string
+  type?: string
+  search?: string
+}
+
 interface PageProps {
-  searchParams: {
-    page?: string
-    accountId?: string
-    from?: string
-    to?: string
-    category?: string
-    type?: string
-    search?: string
-  }
+  // Next.js 15: searchParams is a Promise in Server Components
+  searchParams: Promise<SearchParams>
 }
 
 const LIMIT = 50
 
-async function getTransactions(params: PageProps['searchParams']) {
+async function getTransactions(params: SearchParams) {
   const page   = Math.max(1, parseInt(params.page ?? '1', 10))
   const offset = (page - 1) * LIMIT
 
@@ -40,7 +44,13 @@ async function getTransactions(params: PageProps['searchParams']) {
     conditions.push(eq(transactions.type, params.type))
   }
   if (params.search) {
-    conditions.push(ilike(transactions.description, `%${params.search}%`))
+    const term = `%${params.search}%`
+    conditions.push(or(
+      ilike(transactions.description, term),
+      ilike(transactions.merchant,   term),
+      ilike(transactions.notes,      term),
+      ilike(transactions.category,   term),
+    )!)
   }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined
@@ -87,8 +97,8 @@ async function getTransactions(params: PageProps['searchParams']) {
 }
 
 function buildUrl(
-  current: PageProps['searchParams'],
-  overrides: Partial<PageProps['searchParams']>,
+  current: SearchParams,
+  overrides: Partial<SearchParams>,
 ): string {
   const params = new URLSearchParams()
   const merged = { ...current, ...overrides }
@@ -99,10 +109,11 @@ function buildUrl(
 }
 
 export default async function TransactionsPage({ searchParams }: PageProps) {
+  const params = await searchParams
   const { rows, total, page, totalPages, allAccounts, allCategories } =
-    await getTransactions(searchParams)
+    await getTransactions(params)
 
-  const hasFilters = Object.values(searchParams).some(Boolean)
+  const hasFilters = Object.values(params).some(Boolean)
 
   const offset = (page - 1) * LIMIT
 
@@ -116,8 +127,9 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
             {total.toLocaleString()}
           </span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <ClearAccountButton accounts={allAccounts} />
+          <ExportButton filters={params} />
           <Link
             href="/transactions/categorise"
             className="flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-3xl font-semibold text-sm hover:bg-primary-dim transition-all active:scale-95 shadow-ambient"
@@ -134,7 +146,7 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
           <TransactionFilters
             accounts={allAccounts}
             categories={allCategories}
-            current={searchParams}
+            current={params}
             hasFilters={hasFilters}
           />
         </div>
@@ -221,7 +233,7 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
           <div className="flex gap-2">
             {page > 1 ? (
               <Link
-                href={buildUrl(searchParams, { page: String(page - 1) })}
+                href={buildUrl(params, { page: String(page - 1) })}
                 className="p-1.5 rounded-full bg-white shadow-ambient hover:bg-surface-container-low transition-colors"
                 aria-label="Previous page"
               >
@@ -238,7 +250,7 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
             )}
             {page < totalPages ? (
               <Link
-                href={buildUrl(searchParams, { page: String(page + 1) })}
+                href={buildUrl(params, { page: String(page + 1) })}
                 className="p-1.5 rounded-full bg-white shadow-ambient hover:bg-surface-container-low transition-colors"
                 aria-label="Next page"
               >

@@ -53,7 +53,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
-import { accounts, transactions, importLog, holdings } from '@/lib/db'
+import { accounts, transactions, importLog, holdings, categories } from '@/lib/db'
 import { eq, and, isNotNull, desc } from 'drizzle-orm'
 import { parse } from '@finance/parsers'
 import { format as formatDate } from 'date-fns'
@@ -164,7 +164,14 @@ export async function POST(request: NextRequest) {
   let totalSkipped  = 0
   const allErrors:  string[] = []
 
+  const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10 MB
+
   for (const file of files) {
+    if (file.size > MAX_FILE_BYTES) {
+      allErrors.push(`${file.name}: file too large (max 10 MB)`)
+      continue
+    }
+
     // Read the file content as UTF-8 text.
     // The File API's .text() method handles encoding automatically.
     const content = await file.text()
@@ -186,11 +193,13 @@ export async function POST(request: NextRequest) {
     allErrors.push(...parseResult.parseErrors.map((e) => `${file.name}: ${e}`))
 
     // ── Auto-categorise before insert ──────────────────────────────────────────
-    // Runs the 3-step pipeline: category_rules → bank-provided → keyword map.
+    // Runs the 4-step pipeline: category_rules → bank-provided → keyword map → Claude.
     // Non-fatal: if categorisation fails, transactions still import with null category.
     let categoryMap: Awaited<ReturnType<typeof categoriseBatch>> = new Map()
     try {
-      categoryMap = await categoriseBatch(parseResult.transactions)
+      const categoryRows = await db.select({ name: categories.name }).from(categories)
+      const knownCategories = categoryRows.map(r => r.name)
+      categoryMap = await categoriseBatch(parseResult.transactions, knownCategories)
     } catch {
       // Categorisation failure is non-fatal — import proceeds without categories
     }
@@ -219,8 +228,9 @@ export async function POST(request: NextRequest) {
                 description: tx.description,
                 // Use bank-provided merchant name if available, otherwise raw description
                 merchant:    cat?.merchant ?? tx.description,
-                category:    cat?.category ?? null,
-                type:        tx.type,
+                category:       cat?.category ?? null,
+                categorySource: cat?.categorySource ?? null,
+                type:           tx.type,
                 balance:     tx.balance !== undefined ? String(tx.balance) : null,
                 rawData:     tx.rawData,
               }

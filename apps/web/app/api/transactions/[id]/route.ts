@@ -82,6 +82,12 @@ export async function PATCH(
   if ('merchant' in parsed.data) updates['merchant'] = parsed.data.merchant ?? null
   if ('notes'    in parsed.data) updates['notes']    = parsed.data.notes    ?? null
 
+  // When the user changes the category, stamp it as user-assigned so it exits
+  // the review queue and the source is correctly attributed.
+  if ('category' in parsed.data) {
+    updates['categorySource'] = parsed.data.category ? 'user' : null
+  }
+
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
   }

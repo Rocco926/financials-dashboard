@@ -4,7 +4,11 @@ import { db, categories, transactions, budgets } from '@/lib/db'
 import { eq, and, sql, asc } from 'drizzle-orm'
 import { BudgetsClient, type Period } from './budgets-client'
 
-const VALID_PERIODS: Period[] = ['this_month', '3_months', 'all_time']
+const VALID_PERIODS: Period[] = ['weekly', 'this_month', '3_months', 'all_time']
+
+// Average weeks per month (365.25 / 12 / 7). Used to convert monthly budgets
+// to weekly equivalents for display — budgets are always stored as monthly amounts.
+export const WEEKS_PER_MONTH = 365.25 / 12 / 7
 
 async function getBudgetData(period: Period) {
   // "Spent" aggregation changes with the period.
@@ -12,7 +16,9 @@ async function getBudgetData(period: Period) {
   // We do both in one pass via conditional aggregation — no second query needed.
 
   const spentCondition =
-    period === 'this_month'
+    period === 'weekly'
+      ? sql`DATE_TRUNC('week', ${transactions.date}::date) = DATE_TRUNC('week', CURRENT_DATE)`
+      : period === 'this_month'
       ? sql`DATE_TRUNC('month', ${transactions.date}::date) = DATE_TRUNC('month', CURRENT_DATE)`
       : period === '3_months'
       ? sql`${transactions.date}::date >= CURRENT_DATE - INTERVAL '3 months'`
@@ -117,7 +123,7 @@ export default async function BudgetsPage({
         <p className="text-sm text-secondary mt-1">Manage your monthly allocations and spending habits.</p>
       </div>
 
-      <BudgetsClient initialRows={rows} period={period} trendPct={trendPct} />
+      <BudgetsClient initialRows={rows} period={period} trendPct={trendPct} weeksPerMonth={WEEKS_PER_MONTH} />
     </>
   )
 }

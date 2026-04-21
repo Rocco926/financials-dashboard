@@ -2,13 +2,29 @@ import { db } from '@/lib/db'
 import { transactions, categories } from '@/lib/db'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
-import { sql } from 'drizzle-orm'
+import { sql, inArray } from 'drizzle-orm'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Suspense } from 'react'
 import { getPeriodDates } from '@/lib/utils'
 import { CategoriseClient } from './categorise-client'
 import { CategoriseRangeSelector } from './range-selector'
+
+/** A transaction that was auto-categorised but not yet user-confirmed. */
+export type ReviewItem = {
+  /** Normalised description used as the update key. */
+  pattern: string
+  /** Display description (raw, un-normalised). */
+  displayDescription: string
+  /** Cleaned merchant name if one exists. */
+  displayMerchant: string | null
+  /** The category Claude/keyword/bank assigned. */
+  suggestedCategory: string
+  /** Who assigned it — used to sort (claude first) and badge the row. */
+  source: 'claude' | 'keyword' | 'bank'
+  /** How many transactions share this pattern and source. */
+  count: number
+}
 
 export type MerchantGroup = {
   /** Normalised description — the key used by bulk-categorise. */
@@ -64,6 +80,35 @@ async function getMerchantGroups(from: string | null, to: string | null): Promis
   return rows
 }
 
+async function getReviewItems(): Promise<ReviewItem[]> {
+  const rows = await db
+    .select({
+      pattern:           sql<string>`upper(trim(${transactions.description}))`,
+      displayDescription: sql<string>`min(${transactions.description})`,
+      displayMerchant:   sql<string | null>`min(${transactions.merchant})`,
+      suggestedCategory: sql<string>`${transactions.category}`,
+      source:            sql<'claude' | 'keyword' | 'bank'>`${transactions.categorySource}`,
+      count:             sql<number>`count(*)::int`,
+    })
+    .from(transactions)
+    .where(
+      inArray(transactions.categorySource, ['claude', 'keyword', 'bank']),
+    )
+    .groupBy(
+      sql`upper(trim(${transactions.description}))`,
+      transactions.category,
+      transactions.categorySource,
+    )
+    .orderBy(
+      // Claude suggestions first, then keyword, then bank
+      sql`case ${transactions.categorySource} when 'claude' then 0 when 'keyword' then 1 else 2 end`,
+      sql`count(*) desc`,
+    )
+    .limit(500)
+
+  return rows.filter(r => r.suggestedCategory && r.source) as ReviewItem[]
+}
+
 async function getCategories() {
   return db
     .select({ name: categories.name, colour: categories.colour })
@@ -93,9 +138,10 @@ export default async function CategorisePage({ searchParams }: PageProps) {
     toParam   = dates.to
   }
 
-  const [groups, allCategories] = await Promise.all([
+  const [groups, allCategories, reviewItems] = await Promise.all([
     getMerchantGroups(fromParam, toParam),
     getCategories(),
+    getReviewItems(),
   ])
 
   const totalUncategorised = groups.reduce((sum, g) => sum + g.uncategorisedCount, 0)
@@ -109,15 +155,22 @@ export default async function CategorisePage({ searchParams }: PageProps) {
     <div>
 
       {/* Header */}
-      <header className="flex justify-between items-baseline mb-8">
+      <header className="flex justify-between items-center mb-8">
         <h1 className="text-4xl font-extrabold tracking-tight text-on-surface">Categorise Merchants</h1>
-        <Link
-          href="/transactions"
-          className="flex items-center gap-1 text-sm font-medium text-secondary hover:text-primary transition-colors"
-        >
-          <ArrowLeft className="size-3.5" />
-          <span>Transactions</span>
-        </Link>
+        <div className="flex items-center gap-4">
+          {reviewItems.length > 0 && (
+            <span className="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full">
+              {reviewItems.length} to review
+            </span>
+          )}
+          <Link
+            href="/transactions"
+            className="flex items-center gap-1 text-sm font-medium text-secondary hover:text-primary transition-colors"
+          >
+            <ArrowLeft className="size-3.5" />
+            <span>Transactions</span>
+          </Link>
+        </div>
       </header>
 
       {/* Sub-header row: stats + range selector */}
@@ -138,7 +191,7 @@ export default async function CategorisePage({ searchParams }: PageProps) {
         </Suspense>
       </div>
 
-      {groups.length === 0 ? (
+      {groups.length === 0 && reviewItems.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-ambient px-6 py-16 text-center">
           <p className="text-sm font-medium text-on-surface">All caught up!</p>
           <p className="text-xs text-secondary mt-1">
@@ -157,6 +210,7 @@ export default async function CategorisePage({ searchParams }: PageProps) {
         <CategoriseClient
           groups={groups}
           categories={allCategories}
+          reviewItems={reviewItems}
           from={fromParam ?? undefined}
           to={toParam ?? undefined}
         />
