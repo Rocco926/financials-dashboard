@@ -177,11 +177,12 @@ interface ReviewSectionProps {
 }
 
 function ReviewSection({ items: initialItems, categories, onComplete }: ReviewSectionProps) {
-  const [dismissed, setDismissed]   = useState<Set<string>>(new Set())
-  const [saving, setSaving]         = useState<Set<string>>(new Set())
-  const [errors, setErrors]         = useState<Set<string>>(new Set())
-  const [, startTransition]         = useTransition()
-  const router                      = useRouter()
+  const [dismissed, setDismissed]       = useState<Set<string>>(new Set())
+  const [saving, setSaving]             = useState<Set<string>>(new Set())
+  const [errors, setErrors]             = useState<Set<string>>(new Set())
+  const [acceptingAll, setAcceptingAll] = useState(false)
+  const [, startTransition]             = useTransition()
+  const router                          = useRouter()
 
   const visible = initialItems.filter(item => !dismissed.has(item.pattern))
 
@@ -205,6 +206,44 @@ function ReviewSection({ items: initialItems, categories, onComplete }: ReviewSe
     }
   }
 
+  async function confirmAll() {
+    const remaining = visible.filter(item => !saving.has(item.pattern))
+    if (remaining.length === 0) return
+    setAcceptingAll(true)
+    setSaving(prev => {
+      const s = new Set(prev)
+      remaining.forEach(item => s.add(item.pattern))
+      return s
+    })
+
+    const results = await Promise.allSettled(
+      remaining.map(item =>
+        fetch('/api/transactions/review', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ pattern: item.pattern, confirmedCategory: item.suggestedCategory }),
+        }),
+      ),
+    )
+
+    const newDismissed = new Set(dismissed)
+    const newErrors    = new Set<string>()
+    results.forEach((result, i) => {
+      const item = remaining[i]!
+      if (result.status === 'fulfilled' && result.value.ok) {
+        newDismissed.add(item.pattern)
+      } else {
+        newErrors.add(item.pattern)
+      }
+    })
+
+    setDismissed(newDismissed)
+    setErrors(prev => { const s = new Set(prev); newErrors.forEach(k => s.add(k)); return s })
+    setSaving(new Set())
+    setAcceptingAll(false)
+    startTransition(() => router.refresh())
+  }
+
   if (visible.length === 0) {
     onComplete()
     return null
@@ -220,9 +259,19 @@ function ReviewSection({ items: initialItems, categories, onComplete }: ReviewSe
             Accept to confirm, or pick a different category. Accepted rules are remembered for future imports.
           </p>
         </div>
-        <span className="text-xs font-bold text-secondary tabular-nums bg-surface-container-low px-2.5 py-1 rounded-full">
-          {visible.length} remaining
-        </span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={confirmAll}
+            disabled={acceptingAll || visible.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-white text-xs font-bold hover:bg-primary-dim transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {acceptingAll ? <Loader2 className="size-3 animate-spin" /> : <CheckCircle2 className="size-3" />}
+            Accept All
+          </button>
+          <span className="text-xs font-bold text-secondary tabular-nums bg-surface-container-low px-2.5 py-1 rounded-full">
+            {visible.length} remaining
+          </span>
+        </div>
       </div>
 
       {/* Column headers */}
@@ -319,21 +368,43 @@ function ReviewSection({ items: initialItems, categories, onComplete }: ReviewSe
 function AutoCategoriseButton() {
   const [state, setState]       = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [result, setResult]     = useState<{ categorised: number; skipped: number } | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [, startTransition]     = useTransition()
   const router                  = useRouter()
 
   async function run() {
     setState('loading')
+    setErrorMsg(null)
     try {
-      const res = await fetch('/api/transactions/auto-categorise', { method: 'POST' })
-      if (!res.ok) { setState('error'); return }
-      const json = await res.json() as { categorised: number; skipped: number }
+      const res  = await fetch('/api/transactions/auto-categorise', { method: 'POST' })
+      const json = await res.json() as { categorised: number; skipped: number; error?: string }
+      if (!res.ok) {
+        setErrorMsg(json.error ?? 'Something went wrong')
+        setState('error')
+        return
+      }
       setResult(json)
       setState('done')
       startTransition(() => router.refresh())
     } catch {
+      setErrorMsg('Network error — check your connection')
       setState('error')
     }
+  }
+
+  if (state === 'error' && errorMsg) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-tertiary max-w-xs truncate" title={errorMsg}>{errorMsg}</span>
+        <button
+          onClick={run}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-600 text-white text-xs font-bold hover:bg-violet-700 transition-all active:scale-95 shadow-sm"
+        >
+          <Sparkles className="size-3" />
+          Retry
+        </button>
+      </div>
+    )
   }
 
   if (state === 'done' && result) {
@@ -357,7 +428,7 @@ function AutoCategoriseButton() {
       ) : (
         <Sparkles className="size-3.5" />
       )}
-      {state === 'loading' ? 'Running AI…' : state === 'error' ? 'Try again' : 'Auto-categorise with AI'}
+      {state === 'loading' ? 'Running AI…' : 'Auto-categorise with AI'}
     </button>
   )
 }
@@ -365,8 +436,14 @@ function AutoCategoriseButton() {
 // ─── CategoriseClient ─────────────────────────────────────────────────────────
 
 export function CategoriseClient({ groups: initialGroups, categories, reviewItems: initialReviewItems, from, to }: Props) {
-  const [sessionGroups] = useState(initialGroups)
-  const [reviewItems, setReviewItems] = useState(initialReviewItems)
+  const [sessionGroups, setSessionGroups] = useState(initialGroups)
+  const [reviewItems, setReviewItems]     = useState(initialReviewItems)
+
+  // Sync client state when server data changes after router.refresh().
+  // Without this, auto-categorise runs but the review section never appears because
+  // useState initial values are only read on mount — prop changes are silently ignored.
+  useEffect(() => { setSessionGroups(initialGroups) }, [initialGroups])
+  useEffect(() => { setReviewItems(initialReviewItems) }, [initialReviewItems])
 
   // Pending = selected but not yet submitted
   const [pending, setPending]   = useState<Map<string, string>>(new Map())
@@ -486,11 +563,6 @@ export function CategoriseClient({ groups: initialGroups, categories, reviewItem
   return (
     <div className="flex flex-col gap-8">
 
-      {/* Auto-categorise button */}
-      <div className="flex justify-end">
-        <AutoCategoriseButton />
-      </div>
-
       {/* Review section — auto-categorised items needing confirmation */}
       {reviewItems.length > 0 && (
         <ReviewSection
@@ -503,6 +575,19 @@ export function CategoriseClient({ groups: initialGroups, categories, reviewItem
       {/* Uncategorised section */}
       {visible.length > 0 && (
         <section className="bg-white rounded-2xl shadow-ambient overflow-hidden">
+
+          {/* Section header — AI CTA */}
+          <div className="flex items-center justify-between px-8 py-5 border-b border-surface-container-low">
+            <div>
+              <h2 className="text-sm font-bold text-on-surface">
+                {visible.length} merchant{visible.length !== 1 ? 's' : ''} without a category
+              </h2>
+              <p className="text-xs text-secondary mt-0.5">
+                Use AI to suggest categories, then review and accept — or pick manually below.
+              </p>
+            </div>
+            <AutoCategoriseButton />
+          </div>
 
           {/* Table header */}
           <div className="grid grid-cols-[1.5fr_1fr_1.5fr_60px] gap-4 px-8 py-4 bg-surface-container-low text-[11px] uppercase tracking-widest font-bold text-secondary">

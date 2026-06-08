@@ -117,9 +117,13 @@ export function parseQif(content: string): ParseResult {
 
   let current: QifRecord = {}
 
-  // `position` is the index of successfully committed records — used as
-  // the tiebreaker in generateExternalId, NOT the line number.
-  let position = 0
+  // Tracks within-day occurrence count per (date, amount, description) tuple.
+  // Same fix as csv.ts — using global record position as tiebreaker caused
+  // dedup to fail when re-exporting a longer date range (positions shift).
+  const occurrenceMap = new Map<string, number>()
+
+  // 1-based counter used only for human-readable error messages.
+  let recordIndex = 0
 
   for (const line of lines) {
     // Skip the file-type header line (e.g. "!Type:Bank", "!Type:CCard")
@@ -163,7 +167,7 @@ export function parseQif(content: string): ParseResult {
 
             if (isNaN(amount)) {
               parseErrors.push(
-                `Record ${position + 1}: invalid amount "${current.amount}"`,
+                `Record ${recordIndex + 1}: invalid amount "${current.amount}"`,
               )
             } else {
               // Prefer P (payee) over M (memo) as the description.
@@ -171,8 +175,12 @@ export function parseQif(content: string): ParseResult {
               // not ideal, but valid enough to import.
               const description = (current.payee ?? current.memo ?? '').trim()
 
+              const dayKey = `${date.toISOString().split('T')[0]}|${amount.toFixed(2)}|${description.toLowerCase().trim()}`
+              const occ = occurrenceMap.get(dayKey) ?? 0
+              occurrenceMap.set(dayKey, occ + 1)
+
               transactions.push({
-                externalId: generateExternalId(date, amount, description, position),
+                externalId: generateExternalId(date, amount, description, occ),
                 date,
                 amount,
                 description,
@@ -182,21 +190,20 @@ export function parseQif(content: string): ParseResult {
                 // at commit time (before we reset current = {} below)
                 rawData: { ...current } as Record<string, unknown>,
               })
-
-              position++
             }
           } catch (err) {
             parseErrors.push(
-              `Record ${position + 1}: ${err instanceof Error ? err.message : String(err)}`,
+              `Record ${recordIndex + 1}: ${err instanceof Error ? err.message : String(err)}`,
             )
           }
         } else if (current.date || current.amount) {
           // We have SOME fields but not enough to form a valid transaction.
           // Warn rather than silently discard.
-          parseErrors.push(`Record ${position + 1}: incomplete record (missing ${!current.date ? 'date' : 'amount'}), skipping`)
+          parseErrors.push(`Record ${recordIndex + 1}: incomplete record (missing ${!current.date ? 'date' : 'amount'}), skipping`)
         }
         // Reset accumulator for the next record regardless of success/failure
         current = {}
+        recordIndex++
         break
       }
 

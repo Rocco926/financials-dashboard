@@ -183,6 +183,20 @@ export function HoldingsClient({ initialHoldings, initialSnapshots }: Props) {
 
   const initialHoldingsRef = useRef(initialHoldings)
 
+  // Close modal on Escape + lock body scroll while open
+  useEffect(() => {
+    if (!showForm) return
+    document.body.style.overflow = 'hidden'
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') { setShowForm(false); setEditTarget(null) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [showForm])
+
   useEffect(() => {
     fetch('/api/holdings/snapshots', {
       method: 'POST',
@@ -582,13 +596,28 @@ export function HoldingsClient({ initialHoldings, initialSnapshots }: Props) {
       {/* ── Market insights ───────────────────────────────────────────────────── */}
       <MarketInsights hasHoldings={holdings.length > 0} />
 
-      {/* ── Add / Edit form drawer ────────────────────────────────────────────── */}
+      {/* ── Add / Edit modal ──────────────────────────────────────────────────── */}
       {showForm && (
-        <HoldingForm
-          initial={editTarget}
-          onSuccess={handleFormSuccess}
-          onCancel={() => { setShowForm(false); setEditTarget(null) }}
-        />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Frosted backdrop */}
+          <div
+            className="absolute inset-0 bg-on-surface/20 backdrop-blur-[10px]"
+            onClick={() => { setShowForm(false); setEditTarget(null) }}
+          />
+          {/* Modal card */}
+          <div className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-[24px] bg-white shadow-[0_24px_48px_-12px_rgba(97,94,87,0.2)]">
+            <HoldingForm
+              initial={editTarget}
+              onSuccess={handleFormSuccess}
+              onDelete={async (id) => {
+                await handleDelete(id)
+                setShowForm(false)
+                setEditTarget(null)
+              }}
+              onCancel={() => { setShowForm(false); setEditTarget(null) }}
+            />
+          </div>
+        </div>
       )}
     </div>
   )

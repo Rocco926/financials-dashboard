@@ -4,9 +4,10 @@ import { db, transactions, categories } from '@/lib/db'
 import { and, gte, lte, eq, sql } from 'drizzle-orm'
 import { AnalyticsClient, type AnalyticsPeriod } from './analytics-client'
 
-const VALID_PERIODS: AnalyticsPeriod[] = ['this_month', '3_months', '6_months', 'this_year']
+const PRESET_PERIODS: Exclude<AnalyticsPeriod, 'custom'>[] = ['this_month', '3_months', '6_months', 'this_year']
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
 
-function getPeriodDates(period: AnalyticsPeriod): { from: string; to: string } {
+function getPeriodDates(period: Exclude<AnalyticsPeriod, 'custom'>): { from: string; to: string } {
   const now   = new Date()
   const today = now.toISOString().slice(0, 10)
 
@@ -29,8 +30,7 @@ function getPeriodDates(period: AnalyticsPeriod): { from: string; to: string } {
   return { from, to: today }
 }
 
-async function getAnalyticsData(period: AnalyticsPeriod) {
-  const { from, to } = getPeriodDates(period)
+async function getAnalyticsData(from: string, to: string) {
 
   const transferSubquery = sql`(SELECT name FROM ${categories} WHERE is_transfer = true)`
 
@@ -74,18 +74,36 @@ async function getAnalyticsData(period: AnalyticsPeriod) {
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; category?: string }>
+  searchParams: Promise<{ period?: string; from?: string; to?: string; category?: string }>
 }) {
   const session = await auth()
   if (!session) redirect('/login')
 
   const params = await searchParams
 
-  const period: AnalyticsPeriod = VALID_PERIODS.includes(params.period as AnalyticsPeriod)
-    ? (params.period as AnalyticsPeriod)
-    : 'this_month'
+  let period: AnalyticsPeriod
+  let from: string
+  let to: string
 
-  const { rows, totalSpent, topCategory, days, from, to } = await getAnalyticsData(period)
+  if (
+    params.period === 'custom' &&
+    params.from && DATE_REGEX.test(params.from) &&
+    params.to   && DATE_REGEX.test(params.to)
+  ) {
+    period = 'custom'
+    from   = params.from
+    to     = params.to
+  } else {
+    const preset = PRESET_PERIODS.includes(params.period as Exclude<AnalyticsPeriod, 'custom'>)
+      ? (params.period as Exclude<AnalyticsPeriod, 'custom'>)
+      : 'this_month'
+    period = preset
+    const dates = getPeriodDates(preset)
+    from = dates.from
+    to   = dates.to
+  }
+
+  const { rows, totalSpent, topCategory, days } = await getAnalyticsData(from, to)
 
   return (
     <>

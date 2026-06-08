@@ -20,12 +20,13 @@ interface AccountOption {
 interface Props {
   initial: HoldingRow | null
   onSuccess: (row: HoldingRow) => void
+  onDelete?: (id: string) => Promise<void>
   onCancel: () => void
 }
 
 const inputCls = "w-full bg-surface-container-low border border-secondary-container px-3 py-2 text-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all rounded-xl"
 
-export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
+export function HoldingForm({ initial, onSuccess, onDelete, onCancel }: Props) {
   const isEdit = initial != null
 
   const [type, setType] = useState<HoldingRow['type']>(initial?.type ?? 'cash')
@@ -46,6 +47,7 @@ export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
   const [accounts, setAccounts] = useState<AccountOption[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
 
   useEffect(() => {
     fetch('/api/accounts')
@@ -156,22 +158,23 @@ export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
   const isInvestment = type === 'etf' || type === 'stock'
 
   return (
-    <div className="card overflow-hidden">
+    <>
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-surface-container-low bg-surface-container-low">
-        <p className="text-sm font-medium text-on-surface">
-          {isEdit ? 'Edit holding' : 'Add holding'}
-        </p>
+      <div className="flex items-center justify-between px-6 py-5">
+        <h2 className="text-lg font-semibold tracking-[-0.02em] text-on-surface">
+          {isEdit ? 'Edit Holding' : 'Add Holding'}
+        </h2>
         <button
+          type="button"
           onClick={onCancel}
-          aria-label="Close form"
-          className="text-secondary hover:text-on-surface transition-colors"
+          aria-label="Close"
+          className="text-secondary hover:text-on-surface transition-colors p-1 rounded-lg hover:bg-surface-container-low"
         >
           <X className="size-4" />
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
+      <form onSubmit={handleSubmit} className="px-6 pb-6 space-y-5">
 
         {/* Type toggle */}
         <div>
@@ -182,9 +185,9 @@ export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
                 key={t}
                 type="button"
                 onClick={() => setType(t)}
-                className={`flex-1 py-1.5 text-xs font-medium transition-colors rounded-lg capitalize ${
+                className={`flex-1 py-1.5 text-xs font-medium transition-all rounded-lg capitalize ${
                   type === t
-                    ? 'bg-white text-on-surface shadow-sm'
+                    ? 'bg-primary-fixed text-on-primary-fixed font-semibold shadow-sm'
                     : 'text-secondary hover:text-on-surface'
                 }`}
               >
@@ -347,23 +350,60 @@ export function HoldingForm({ initial, onSuccess, onCancel }: Props) {
           </p>
         )}
 
-        <div className="flex gap-3 pt-1">
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-5 py-2 text-sm bg-primary text-white hover:bg-primary-dim transition-colors disabled:opacity-50 rounded-xl"
-          >
-            {loading ? 'Saving…' : isEdit ? 'Save changes' : 'Add holding'}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-5 py-2 text-sm text-secondary hover:text-on-surface bg-surface-container-low hover:bg-surface-container transition-colors rounded-xl"
-          >
-            Cancel
-          </button>
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-1">
+          {/* Delete (edit mode only) */}
+          {isEdit && initial ? (
+            deleteConfirm ? (
+              <span className="flex items-center gap-2 text-xs">
+                <span className="text-secondary">Are you sure?</span>
+                <button
+                  type="button"
+                  onClick={async () => { await onDelete?.(initial.id) }}
+                  className="text-[#9e422c] font-medium hover:underline"
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirm(false)}
+                  className="text-secondary hover:text-on-surface"
+                >
+                  Cancel
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(true)}
+                className="text-sm text-[#9e422c] hover:opacity-70 transition-opacity"
+              >
+                Delete Holding
+              </button>
+            )
+          ) : (
+            <div />
+          )}
+
+          {/* Save / Cancel */}
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-5 py-2 text-sm text-secondary hover:text-on-surface bg-surface-container-high hover:bg-surface-container transition-colors rounded-xl"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-5 py-2 text-sm bg-primary text-on-primary hover:bg-primary-dim transition-colors disabled:opacity-50 rounded-xl font-medium"
+            >
+              {loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Save Holding'}
+            </button>
+          </div>
         </div>
       </form>
-    </div>
+    </>
   )
 }

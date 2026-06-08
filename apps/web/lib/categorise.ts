@@ -457,46 +457,66 @@ export async function classifyWithClaude(
   if (descriptions.length === 0) return result
 
   const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return result
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not configured')
 
-  const categoryList = knownCategories.join(', ')
+  // Build a case-insensitive lookup so "transport" matches "Transport"
+  const knownSet   = new Set(knownCategories)
+  const knownLower = new Map(knownCategories.map(c => [c.toLowerCase(), c]))
+  const categoryList = knownCategories.join('\n')
 
-  // Chunk to avoid token limits — 100 descriptions per call is conservative
+  // Use positional arrays: send descriptions as a JSON array, receive a parallel
+  // JSON array of categories. This avoids key-echo issues entirely — position
+  // guarantees the mapping without any string-key matching on merchant names.
   const client = new Anthropic({ apiKey })
-  const CHUNK_SIZE = 100
+  const CHUNK_SIZE = 50
   for (let i = 0; i < descriptions.length; i += CHUNK_SIZE) {
     const chunk = descriptions.slice(i, i + CHUNK_SIZE)
-    try {
-      const msg = await client.messages.create({
-        model:      'claude-haiku-4-5',
-        max_tokens: 1024,
-        system: `You are a bank transaction categoriser for Australian personal finance.
-Given a list of bank transaction descriptions, assign each one to the most appropriate category from the provided list.
-If no category fits, use null.
-Return ONLY a valid JSON object mapping each description to a category name or null. No explanation, no markdown.`,
-        messages: [{
-          role:    'user',
-          content: `Categories: ${categoryList}\n\nDescriptions:\n${chunk.map((d, idx) => `${idx + 1}. ${d}`).join('\n')}\n\nReturn JSON: {"description": "category" | null, ...}`,
-        }],
-      })
 
-      const text = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : null
-      if (!text) continue
+    const msg = await client.messages.create({
+      model:      'claude-haiku-4-5-20251001',
+      max_tokens: 2048,
+      system: `You are a bank transaction categoriser for Australian personal finance.
+You will receive a JSON array of transaction descriptions.
+Return a JSON array of the SAME LENGTH where each element is the category for the corresponding description.
+Use ONLY category names from the provided list. If no category fits perfectly, choose the closest reasonable one.
+Only use null for entries that are completely unclassifiable (e.g. bare account numbers with no merchant name).
+Return ONLY the JSON array. No explanation, no markdown, no code fences.`,
+      messages: [{
+        role:    'user',
+        content: `Available categories:\n${categoryList}\n\nDescriptions:\n${JSON.stringify(chunk)}`,
+      }],
+    })
 
-      // Strip markdown code fences if present
-      const json = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
-      const parsed: Record<string, string | null> = JSON.parse(json)
-      const knownSet = new Set(knownCategories)
+    const text = msg.content[0]?.type === 'text' ? msg.content[0].text.trim() : null
+    if (!text) {
+      for (const desc of chunk) result.set(desc, null)
+      continue
+    }
 
-      for (const desc of chunk) {
-        const suggestion = parsed[desc] ?? null
-        // Only accept exact matches against the known category list
-        result.set(desc, suggestion && knownSet.has(suggestion) ? suggestion : null)
-      }
-    } catch {
-      // On any error, leave this chunk's descriptions as null — non-fatal
-      for (const desc of chunk) {
+    // Strip markdown code fences if Claude adds them despite the instruction
+    const json   = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim()
+    const parsed: unknown = JSON.parse(json)
+
+    if (!Array.isArray(parsed) || parsed.length !== chunk.length) {
+      throw new Error(
+        `Claude returned ${Array.isArray(parsed) ? parsed.length : 'non-array'} items for ${chunk.length} descriptions`,
+      )
+    }
+
+    for (let j = 0; j < chunk.length; j++) {
+      const desc       = chunk[j]!
+      const suggestion = typeof parsed[j] === 'string' ? (parsed[j] as string).trim() : null
+
+      if (!suggestion) {
         result.set(desc, null)
+        continue
+      }
+
+      // Exact match first; fall back to case-insensitive to handle minor casing drift
+      if (knownSet.has(suggestion)) {
+        result.set(desc, suggestion)
+      } else {
+        result.set(desc, knownLower.get(suggestion.toLowerCase()) ?? null)
       }
     }
   }

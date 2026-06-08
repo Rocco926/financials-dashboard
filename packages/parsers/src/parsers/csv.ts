@@ -485,6 +485,14 @@ export function parseCsv(content: string): ParseResult {
     return { transactions, currency: 'AUD', format: 'csv', parseErrors }
   }
 
+  // Tracks how many times each (date, amount, description) tuple has appeared
+  // so far in this file. Used to generate stable externalIds that don't depend
+  // on global file position — fixing a bug where re-exporting a longer date range
+  // would assign different positions to already-imported transactions, bypassing
+  // deduplication. Within-day occurrence count is stable as long as the bank
+  // exports same-day transactions in consistent order (which they do).
+  const occurrenceMap = new Map<string, number>()
+
   // Parse each data row using the appropriate bank-specific function.
   // i + 1 converts to 1-based position (more natural for error messages).
   for (let i = 0; i < parsed.data.length; i++) {
@@ -502,6 +510,12 @@ export function parseCsv(content: string): ParseResult {
     if (typeof result === 'string') {
       parseErrors.push(result)
     } else {
+      // Override the file-position-based externalId with a within-day occurrence id.
+      // This is stable across re-exports of different date ranges.
+      const dayKey = `${result.date.toISOString().split('T')[0]}|${result.amount.toFixed(2)}|${result.description.toLowerCase().trim()}`
+      const occ = occurrenceMap.get(dayKey) ?? 0
+      occurrenceMap.set(dayKey, occ + 1)
+      result.externalId = generateExternalId(result.date, result.amount, result.description, occ)
       transactions.push(result)
     }
   }

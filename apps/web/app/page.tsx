@@ -3,7 +3,7 @@ import { transactions, accounts, categories, holdings, holdingPriceCache, holdin
 import { eq, and, gte, lte, desc, asc, sql, inArray } from 'drizzle-orm'
 import { getLiveBalances } from '@/lib/get-live-balances'
 import { MonthlyChart } from '@/components/monthly-chart'
-import { CategoryChart } from '@/components/category-chart'
+import { CategoryPanel } from '@/components/category-panel'
 import { NetWorthChart } from '@/components/net-worth-chart'
 import { SavingsRateChart } from '@/components/savings-rate-chart'
 import { MonthlySummary } from '@/components/monthly-summary'
@@ -11,7 +11,7 @@ import { PeriodSelector } from '@/components/period-selector'
 import { Suspense } from 'react'
 import { formatCurrency, formatDate, getPeriodDates } from '@/lib/utils'
 import Link from 'next/link'
-import { ArrowUp, ArrowDown, Percent, ArrowRight, Plus } from 'lucide-react'
+import { ArrowUp, ArrowDown, Percent, ArrowRight, Plus, Calendar } from 'lucide-react'
 
 interface DashboardProps {
   // Next.js 15: searchParams is a Promise in Server Components
@@ -123,7 +123,8 @@ async function getDashboardData(from: string, to: string) {
   const categoryRaw = await db
     .select({
       name:   sql<string>`COALESCE(${transactions.category}, 'Uncategorised')`,
-      value:  sql<string>`ABS(SUM(${transactions.amount}::numeric))`,
+      total:  sql<string>`ABS(SUM(${transactions.amount}::numeric))`,
+      count:  sql<string>`COUNT(*)`,
       colour: categories.colour,
     })
     .from(transactions)
@@ -141,7 +142,8 @@ async function getDashboardData(from: string, to: string) {
 
   const categoryData = categoryRaw.map((r) => ({
     name:   r.name,
-    value:  parseFloat(r.value),
+    total:  parseFloat(r.total),
+    count:  parseInt(r.count, 10),
     colour: r.colour ?? '#6b7280',
   }))
 
@@ -162,7 +164,13 @@ async function getDashboardData(from: string, to: string) {
     .orderBy(desc(transactions.date), desc(transactions.createdAt))
     .limit(10)
 
-  return { income, expenses, net: income + expenses, savingsRate, monthlyData, categoryData, recent }
+  const totalSpent = Math.abs(expenses)
+  const fromDate   = new Date(from + 'T00:00:00')
+  const toDate     = new Date(to   + 'T00:00:00')
+  const days       = Math.max(1, Math.round((toDate.getTime() - fromDate.getTime()) / 86_400_000) + 1)
+  const avgPerDay  = totalSpent / days
+
+  return { income, expenses, net: income + expenses, savingsRate, monthlyData, categoryData, recent, avgPerDay }
 }
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
@@ -184,7 +192,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
   const currentMonthFirst = `${currentMonth}-01`
 
   const [
-    { income, expenses, net, savingsRate, monthlyData, categoryData, recent },
+    { income, expenses, net, savingsRate, monthlyData, categoryData, recent, avgPerDay },
     netWorth,
     snapshots,
     summaryRow,
@@ -222,8 +230,8 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
         </div>
       </header>
 
-      {/* Summary cards — 3-col grid */}
-      <div className="grid grid-cols-3 gap-6 mb-8">
+      {/* Summary cards — 4-col grid */}
+      <div className="grid grid-cols-4 gap-6 mb-8">
 
         {/* Income */}
         <div className="bg-white p-6 rounded-[24px] shadow-ambient relative overflow-hidden">
@@ -272,6 +280,17 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
           </div>
         </div>
 
+        {/* Avg / Day */}
+        <div className="bg-white p-6 rounded-[24px] shadow-ambient relative overflow-hidden">
+          <div className="flex justify-between items-start mb-4">
+            <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Avg / Day</span>
+            <Calendar className="size-5 text-secondary shrink-0" />
+          </div>
+          <div className="text-4xl font-semibold text-on-surface tracking-tight tabular-nums">
+            {formatCurrency(avgPerDay)}
+          </div>
+        </div>
+
       </div>
 
       {/* Net worth — only shown when holdings exist */}
@@ -301,16 +320,15 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
         </section>
       )}
 
-      {/* Charts grid */}
-      <div className="grid grid-cols-2 gap-8 mb-8">
-        <div className="bg-white p-8 rounded-[24px] shadow-ambient">
-          <h4 className="text-lg font-semibold text-on-surface mb-8">Monthly income vs expenses</h4>
-          <MonthlyChart data={monthlyData} />
-        </div>
-        <div className="bg-white p-8 rounded-[24px] shadow-ambient">
-          <h4 className="text-lg font-semibold text-on-surface mb-8">Spending by category</h4>
-          <CategoryChart data={categoryData} />
-        </div>
+      {/* Monthly chart */}
+      <div className="bg-white p-8 rounded-[24px] shadow-ambient mb-8">
+        <h4 className="text-lg font-semibold text-on-surface mb-8">Monthly income vs expenses</h4>
+        <MonthlyChart data={monthlyData} />
+      </div>
+
+      {/* Category breakdown + merchant drill-down */}
+      <div className="mb-8">
+        <CategoryPanel rows={categoryData} from={from} to={to} />
       </div>
 
       {/* Savings rate chart */}

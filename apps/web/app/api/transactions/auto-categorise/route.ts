@@ -53,8 +53,14 @@ export async function POST() {
     return NextResponse.json({ categorised: 0, skipped: 0 })
   }
 
-  // Classify with Claude
-  const claudeMap = await classifyWithClaude(uniqueDescs, knownCategories)
+  // Classify with Claude — throws if API key missing or response malformed
+  let claudeMap: Map<string, string | null>
+  try {
+    claudeMap = await classifyWithClaude(uniqueDescs, knownCategories)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error from Claude'
+    return NextResponse.json({ error: message, categorised: 0, skipped: 0 }, { status: 500 })
+  }
 
   let categorised = 0
   let skipped = 0

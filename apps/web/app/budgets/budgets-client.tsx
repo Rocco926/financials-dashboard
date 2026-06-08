@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Pencil, Check, X, ListFilter, Plus, TrendingUp, TrendingDown,
   ShoppingCart, Utensils, Car, Film, Tag, Zap, Coffee, Leaf,
-  Heart, Dumbbell, Plane, Shield, Smartphone, House, PawPrint,
+  Heart, Dumbbell, Plane, Shield, Smartphone, Home, PawPrint,
   Fuel, Wifi, Tv, Receipt, FolderOpen, ShoppingBag, Pill, Shirt,
   Gift, Baby, Bike, BookOpen,
   type LucideIcon,
@@ -54,7 +54,7 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   'Subscriptions':      Smartphone,
   'Clothing':           Shirt,
   'Gifts':              Gift,
-  'Home':               House,
+  'Home':               Home,
   'Pets':               PawPrint,
   'Alcohol':            ShoppingBag,
   'Pharmacy':           Pill,
@@ -170,7 +170,7 @@ function AddBudgetModal({
   unbudgeted:     BudgetRow[]
   toMonthly:      (v: number) => number
   frequencyLabel: string
-  onSave:         (categoryId: string, amount: number) => Promise<void>
+  onSave:         (categoryId: string, amount: number) => Promise<string | null>
   onClose:        () => void
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)

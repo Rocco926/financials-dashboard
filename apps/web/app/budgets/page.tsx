@@ -8,7 +8,7 @@ const VALID_PERIODS: Period[] = ['weekly', 'this_month', '3_months', 'all_time']
 
 // Average weeks per month (365.25 / 12 / 7). Used to convert monthly budgets
 // to weekly equivalents for display — budgets are always stored as monthly amounts.
-export const WEEKS_PER_MONTH = 365.25 / 12 / 7
+const WEEKS_PER_MONTH = 365.25 / 12 / 7
 
 async function getBudgetData(period: Period) {
   // "Spent" aggregation changes with the period.

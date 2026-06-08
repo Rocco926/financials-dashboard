@@ -156,7 +156,7 @@ export default async function CategorisePage({ searchParams }: PageProps) {
 
       {/* Header */}
       <header className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-extrabold tracking-tight text-on-surface">Categorise Merchants</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight text-on-surface">Categorise</h1>
         <div className="flex items-center gap-4">
           {reviewItems.length > 0 && (
             <span className="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full">

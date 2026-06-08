@@ -33,7 +33,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { db, transactions, categoryRules } from '@/lib/db'
-import { and, inArray, sql } from 'drizzle-orm'
+import { and, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 const bodySchema = z.object({
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       .where(
         and(
           sql`upper(trim(${transactions.description})) = ${pattern}`,
-          inArray(transactions.categorySource, ['claude', 'keyword', 'bank']),
+          sql`${transactions.categorySource} IS DISTINCT FROM 'user'`,
         ),
       )
       .returning({ id: transactions.id }),
